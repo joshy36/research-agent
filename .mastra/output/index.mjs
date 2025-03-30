@@ -4,10 +4,12 @@ import { TABLE_EVALS } from '@mastra/core/storage';
 import { checkEvalStorageFields } from '@mastra/core/utils';
 import { Mastra, isVercelTool } from '@mastra/core';
 import { createLogger } from '@mastra/core/logger';
-import { anthropic } from '@ai-sdk/anthropic';
 import { Agent } from '@mastra/core/agent';
+import { anthropic } from '@ai-sdk/anthropic';
+import { google } from '@ai-sdk/google';
 import { createTool } from '@mastra/core/tools';
 import { z, ZodFirstPartyTypeKind, ZodOptional } from 'zod';
+import { Workflow, Step } from '@mastra/core/workflows';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { pathToFileURL } from 'url';
@@ -102,16 +104,189 @@ const weatherAgent = new Agent({
       - Include relevant details like humidity, wind conditions, and precipitation
       - Keep responses concise but informative
 
-      Use the weatherTool to fetch current weather data.
 `,
-  model: anthropic("claude-3-5-sonnet-20241022"),
+  model: google("gemini-1.5-flash-latest"),
   tools: { weatherTool }
 });
 
+const stepOne = new Step({
+  id: "stepOne",
+  execute: async ({ context }) => ({
+    doubledValue: context.triggerData.inputValue * 2
+  })
+});
+const stepTwo = new Step({
+  id: "stepTwo",
+  execute: async ({ context }) => {
+    if (context.steps.stepOne.status !== "success") {
+      return { incrementedValue: 0 };
+    }
+    return { incrementedValue: context.steps.stepOne.output.doubledValue + 1 };
+  }
+});
+const stepThree = new Step({
+  id: "stepThree",
+  execute: async ({ context }) => {
+    if (context.steps.stepTwo.status !== "success") {
+      return { tripledValue: 0 };
+    }
+    return { tripledValue: context.steps.stepTwo.output.incrementedValue * 3 };
+  }
+});
+const myWorkflow = new Workflow({
+  name: "my-workflow",
+  triggerSchema: z.object({
+    inputValue: z.number()
+  })
+});
+myWorkflow.step(stepOne).then(stepTwo).then(stepThree).commit();
+
+const pubMedResearchAgent = new Agent({
+  name: "PubMed MeSH Term Generator",
+  instructions: `
+You are a PubMed MeSH Term Generator designed to parse user queries into precise, relevant MeSH terms for PubMed Central (PMC) searches. Your task is to analyze the input and return a JSON object with parsed terms. Follow these steps:
+
+1. **Parse the Query**: Split the user\u2019s input into individual terms based on spaces. Remove punctuation (e.g., "?", ".", ",") and convert to lowercase for consistency.
+2. **Extract Key MeSH Terms**: 
+   - Filter out common stop words (e.g., "what," "are," "the," "is," "of," "on," "in," "and," "to," "with", "how," "does") to focus on meaningful terms.
+   - Exclude vague or non-specific terms unlikely to be MeSH-indexed (e.g., "effects," "benefits," "boost," "impact," "role," "use") unless they form part of a compound term (e.g., "side effects").
+   - Prioritize biomedical nouns and concepts (e.g., "magnesium," "sleep," "anxiety," "vitamin c," "diabetes"). Combine adjacent terms into compound phrases if they form a known or likely MeSH term (e.g., "vitamin" + "c" \u2192 "vitamin c," "side" + "effects" \u2192 "side effects").
+   - Correct obvious typos (e.g., "mangesium" to "magnesium") if confident.
+3. **Validate MeSH Terms**: Ensure the resulting array contains at least one term. If no valid terms remain, return an empty keyTerms array with a note.
+4. **Structure the Response**: Return a JSON object with:
+   - **parsedQuery**: An object with:
+     - "rawTerms": the full array of split terms before filtering.
+     - "keyTerms": the filtered array of MeSH terms.
+   - **note**: A string, only if keyTerms is empty (e.g., "No valid MeSH terms identified").
+
+Focus on precision and relevance. Do not fetch articles, add synonyms, or apply extra filters unless requested.
+
+**Examples**:
+- **Input**: "what are the effects of magnesium on sleep?"
+  - Return:
+    {
+      "parsedQuery": {
+        "rawTerms": ["what", "are", "the", "effects", "of", "magnesium", "on", "sleep"],
+        "keyTerms": ["magnesium", "sleep"]
+      }
+    }
+- **Input**: "vitamin C immunity boost"
+  - Return:
+    {
+      "parsedQuery": {
+        "rawTerms": ["vitamin", "c", "immunity", "boost"],
+        "keyTerms": ["vitamin c", "immunity"]
+      }
+    }
+- **Input**: "what is this?"
+  - Return:
+    {
+      "parsedQuery": {
+        "rawTerms": ["what", "is", "this"],
+        "keyTerms": []
+      },
+      "note": "No valid MeSH terms identified"
+    }
+  `,
+  model: anthropic("claude-3-sonnet-20240229")
+  // No tools needed anymore
+});
+
+const generateMeshTerms = new Step({
+  id: "generateMeshTerms",
+  execute: async ({ context }) => {
+    const agentResponse = await pubMedResearchAgent.generate([
+      { role: "user", content: context.triggerData.query }
+    ]);
+    const result = JSON.parse(agentResponse.text);
+    return {
+      parsedQuery: result.parsedQuery,
+      note: result.note || null
+    };
+  }
+});
+const fetchArticles = new Step({
+  id: "fetchArticles",
+  execute: async ({ context }) => {
+    if (context.steps.generateMeshTerms.status !== "success") {
+      return { articles: [] };
+    }
+    const { keyTerms } = context.steps.generateMeshTerms.output.parsedQuery;
+    if (!keyTerms.length) {
+      return { articles: [] };
+    }
+    const baseUrl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/";
+    const query = keyTerms.map((term) => `${term}[mesh]`).join(" AND ");
+    const searchUrl = `${baseUrl}esearch.fcgi?db=pmc&term=${encodeURIComponent(query)}&retmax=2&retmode=json`;
+    const searchResponse = await fetch(searchUrl);
+    if (!searchResponse.ok) {
+      console.error(`ESearch failed: ${searchResponse.statusText}`);
+      return { articles: [] };
+    }
+    const searchData = await searchResponse.json();
+    const pmcids = searchData.esearchresult?.idlist || [];
+    if (!pmcids.length) {
+      console.log("No PMCIDs found for query:", query);
+      return { articles: [] };
+    }
+    const formattedPmcids = pmcids;
+    const summaryUrl = `${baseUrl}esummary.fcgi?db=pmc&id=${formattedPmcids.join(",")}&retmode=json`;
+    const summaryResponse = await fetch(summaryUrl);
+    if (!summaryResponse.ok) {
+      console.error(`ESummary failed: ${summaryResponse.statusText}`);
+      return { articles: [] };
+    }
+    const summaryData = await summaryResponse.json();
+    const articles = Object.values(summaryData.result || {}).filter((item) => item.uid).map((item) => {
+      const pmcid = item.uid;
+      return {
+        pmid: item.articleids?.find((id) => id.idtype === "pmid")?.value || "Unknown",
+        pmcid,
+        title: item.title || "No title available",
+        authors: item.authors?.map((a) => a.name) || ["Unknown"],
+        journal: item.fulljournalname || item.source || "Unknown",
+        pubDate: item.pubdate || item.epubdate || item.printpubdate || "Unknown",
+        fullTextUrl: `https://www.ncbi.nlm.nih.gov/pmc/articles/${pmcid}/`
+      };
+    });
+    return { articles };
+  }
+});
+const structureResponse = new Step({
+  id: "structureResponse",
+  execute: async ({ context }) => {
+    if (context.steps.fetchArticles.status !== "success") {
+      return {
+        parsedQuery: context.steps.generateMeshTerms.output?.parsedQuery || { rawTerms: [], keyTerms: [] },
+        articles: [],
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        note: context.steps.generateMeshTerms.output?.note || "Step failed"
+      };
+    }
+    return {
+      parsedQuery: context.steps.generateMeshTerms.output.parsedQuery,
+      articles: context.steps.fetchArticles.output.articles,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      note: context.steps.generateMeshTerms.output?.note || null
+    };
+  }
+});
+const researchWorkflow = new Workflow({
+  name: "pubmed-research-workflow",
+  triggerSchema: z.object({
+    query: z.string().describe("A user query to parse into MeSH terms and fetch PMC articles")
+  })
+});
+researchWorkflow.step(generateMeshTerms).then(fetchArticles).then(structureResponse).commit();
+
 const mastra = new Mastra({
-  // workflows: { weatherWorkflow },
+  workflows: {
+    myWorkflow,
+    researchWorkflow
+  },
   agents: {
-    weatherAgent
+    weatherAgent,
+    pubMedResearchAgent
   },
   logger: createLogger({
     name: "Mastra",
