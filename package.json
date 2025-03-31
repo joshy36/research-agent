@@ -16,6 +16,7 @@
     "@mastra/core": "^0.7.0",
     "@supabase/supabase-js": "^2.49.4",
     "axios": "^1.8.4",
+    "lucide-react": "^0.486.0",
     "mastra": "^0.4.4",
     "next": "15.2.4",
     "react": "^19.0.0",
@@ -31,6 +32,9 @@
     "@types/xml2js": "^0.4.14",
     "eslint": "^9",
     "eslint-config-next": "15.2.4",
+    "prettier": "^3.5.3",
+    "prettier-plugin-organize-imports": "^4.1.0",
+    "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

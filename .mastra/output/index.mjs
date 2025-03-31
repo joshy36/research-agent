@@ -4,9 +4,8 @@ import { TABLE_EVALS } from '@mastra/core/storage';
 import { checkEvalStorageFields } from '@mastra/core/utils';
 import { Mastra, isVercelTool } from '@mastra/core';
 import { createLogger } from '@mastra/core/logger';
+import { google, createGoogleGenerativeAI } from '@ai-sdk/google';
 import { Agent } from '@mastra/core/agent';
-import { anthropic } from '@ai-sdk/anthropic';
-import { google } from '@ai-sdk/google';
 import { createTool } from '@mastra/core/tools';
 import { z, ZodFirstPartyTypeKind, ZodOptional } from 'zod';
 import { Workflow, Step } from '@mastra/core/workflows';
@@ -141,6 +140,10 @@ const myWorkflow = new Workflow({
 });
 myWorkflow.step(stepOne).then(stepTwo).then(stepThree).commit();
 
+const googleProvider = createGoogleGenerativeAI({
+  apiKey: process.env.NEXT_PUBLIC_GOOGLE_GENERATIVE_AI_API_KEY
+});
+
 const pubMedResearchAgent = new Agent({
   name: "PubMed MeSH Term Generator",
   instructions: `
@@ -188,8 +191,8 @@ Focus on precision and relevance. Do not fetch articles, add synonyms, or apply 
       "note": "No valid MeSH terms identified"
     }
   `,
-  model: anthropic("claude-3-sonnet-20240229")
-  // No tools needed anymore
+  model: googleProvider("gemini-1.5-flash-latest")
+  // model: anthropic('claude-3-sonnet-20240229'),
 });
 
 const generateMeshTerms = new Step({
@@ -198,7 +201,8 @@ const generateMeshTerms = new Step({
     const agentResponse = await pubMedResearchAgent.generate([
       { role: "user", content: context.triggerData.query }
     ]);
-    const result = JSON.parse(agentResponse.text);
+    const jsonString = agentResponse.steps[0].text.replace(/```json\s*/, "").replace(/\s*```/, "").trim();
+    const result = JSON.parse(jsonString);
     return {
       parsedQuery: result.parsedQuery,
       note: result.note || null
@@ -274,7 +278,7 @@ const structureResponse = new Step({
 const researchWorkflow = new Workflow({
   name: "pubmed-research-workflow",
   triggerSchema: z.object({
-    query: z.string().describe("A user query to parse into MeSH terms and fetch PMC articles")
+    query: z.string()
   })
 });
 researchWorkflow.step(generateMeshTerms).then(fetchArticles).then(structureResponse).commit();

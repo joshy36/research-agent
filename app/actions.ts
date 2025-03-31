@@ -1,12 +1,18 @@
 'use server';
 
-import { mastra } from '@/src/mastra';
+import { mastra } from '@/src/mastra'; // Assuming mastra is imported from somewhere
 
-export async function getWeatherInfo(city: string) {
-  const agent = mastra.getAgent('weatherAgent');
+export async function getResearchInfo(query: string) {
+  try {
+    const { runId, start } = mastra.getWorkflow('researchWorkflow').createRun();
 
-  const result = await agent.generate(`What's the weather like in ${city}?`);
-  let text = result.steps[1];
+    const runResult = await start({
+      triggerData: { query: query },
+    });
 
-  return text;
+    return runResult; // Return the output from the workflow result
+  } catch (error) {
+    console.error('Error in getResearchInfo:', error);
+    throw error; // Re-throw to let the caller handle it
+  }
 }

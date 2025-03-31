@@ -17,7 +17,13 @@ const generateMeshTerms = new Step({
       { role: 'user', content: context.triggerData.query },
     ]);
 
-    const result = JSON.parse(agentResponse.text) as Resp;
+    const jsonString = agentResponse.steps[0].text
+      .replace(/```json\s*/, '')
+      .replace(/\s*```/, '')
+      .trim();
+
+    const result = JSON.parse(jsonString) as Resp;
+
     return {
       parsedQuery: result.parsedQuery,
       note: result.note || null,
@@ -140,9 +146,7 @@ const structureResponse = new Step({
 export const researchWorkflow = new Workflow({
   name: 'pubmed-research-workflow',
   triggerSchema: z.object({
-    query: z
-      .string()
-      .describe('A user query to parse into MeSH terms and fetch PMC articles'),
+    query: z.string(),
   }),
 });
 
