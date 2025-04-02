@@ -60,7 +60,7 @@ export function Research() {
   }
 
   return (
-    <div className="flex min-h-screen justify-center bg-zinc-900 p-6">
+    <div className="flex min-h-screen items-center justify-center bg-zinc-900 p-6">
       <div className="w-full max-w-4xl space-y-6">
         {/* Search Form */}
         <div className="">

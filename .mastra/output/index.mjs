@@ -4,8 +4,11 @@ import { TABLE_EVALS } from '@mastra/core/storage';
 import { checkEvalStorageFields } from '@mastra/core/utils';
 import { Mastra, isVercelTool } from '@mastra/core';
 import { createLogger } from '@mastra/core/logger';
+import { PgVector } from '@mastra/pg';
 import { google, createGoogleGenerativeAI } from '@ai-sdk/google';
 import { Agent } from '@mastra/core/agent';
+import { openai } from '@ai-sdk/openai';
+import { createVectorQueryTool } from '@mastra/rag';
 import { createTool } from '@mastra/core/tools';
 import { z, ZodFirstPartyTypeKind, ZodOptional } from 'zod';
 import { Workflow, Step } from '@mastra/core/workflows';
@@ -108,38 +111,6 @@ const weatherAgent = new Agent({
   tools: { weatherTool }
 });
 
-const stepOne = new Step({
-  id: "stepOne",
-  execute: async ({ context }) => ({
-    doubledValue: context.triggerData.inputValue * 2
-  })
-});
-const stepTwo = new Step({
-  id: "stepTwo",
-  execute: async ({ context }) => {
-    if (context.steps.stepOne.status !== "success") {
-      return { incrementedValue: 0 };
-    }
-    return { incrementedValue: context.steps.stepOne.output.doubledValue + 1 };
-  }
-});
-const stepThree = new Step({
-  id: "stepThree",
-  execute: async ({ context }) => {
-    if (context.steps.stepTwo.status !== "success") {
-      return { tripledValue: 0 };
-    }
-    return { tripledValue: context.steps.stepTwo.output.incrementedValue * 3 };
-  }
-});
-const myWorkflow = new Workflow({
-  name: "my-workflow",
-  triggerSchema: z.object({
-    inputValue: z.number()
-  })
-});
-myWorkflow.step(stepOne).then(stepTwo).then(stepThree).commit();
-
 const googleProvider = createGoogleGenerativeAI({
   apiKey: process.env.NEXT_PUBLIC_GOOGLE_GENERATIVE_AI_API_KEY
 });
@@ -191,9 +162,59 @@ Focus on precision and relevance. Do not fetch articles, add synonyms, or apply 
       "note": "No valid MeSH terms identified"
     }
   `,
-  model: googleProvider("gemini-1.5-flash-latest")
+  model: googleProvider("gemini-2.0-flash-001")
   // model: anthropic('claude-3-sonnet-20240229'),
 });
+
+const vectorQueryTool = createVectorQueryTool({
+  vectorStoreName: "pgVector",
+  indexName: "papers",
+  model: openai.embedding("text-embedding-3-small")
+});
+const researchAgent = new Agent({
+  name: "Research Assistant",
+  instructions: `You are a helpful research assistant that analyzes academic papers and technical documents.
+    Use the provided vector query tool to find relevant information from your knowledge base, 
+    and provide accurate, well-supported answers based on the retrieved content.
+    Focus on the specific content available in the tool and acknowledge if you cannot find sufficient information to answer a question.
+    Base your responses only on the content provided, not on general knowledge.`,
+  model: googleProvider("gemini-2.0-flash-001"),
+  tools: {
+    vectorQueryTool
+  }
+});
+
+const stepOne = new Step({
+  id: "stepOne",
+  execute: async ({ context }) => ({
+    doubledValue: context.triggerData.inputValue * 2
+  })
+});
+const stepTwo = new Step({
+  id: "stepTwo",
+  execute: async ({ context }) => {
+    if (context.steps.stepOne.status !== "success") {
+      return { incrementedValue: 0 };
+    }
+    return { incrementedValue: context.steps.stepOne.output.doubledValue + 1 };
+  }
+});
+const stepThree = new Step({
+  id: "stepThree",
+  execute: async ({ context }) => {
+    if (context.steps.stepTwo.status !== "success") {
+      return { tripledValue: 0 };
+    }
+    return { tripledValue: context.steps.stepTwo.output.incrementedValue * 3 };
+  }
+});
+const myWorkflow = new Workflow({
+  name: "my-workflow",
+  triggerSchema: z.object({
+    inputValue: z.number()
+  })
+});
+myWorkflow.step(stepOne).then(stepTwo).then(stepThree).commit();
 
 const generateMeshTerms = new Step({
   id: "generateMeshTerms",
@@ -221,7 +242,7 @@ const fetchArticles = new Step({
     }
     const baseUrl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/";
     const query = keyTerms.map((term) => `${term}[mesh]`).join(" AND ");
-    const searchUrl = `${baseUrl}esearch.fcgi?db=pmc&term=${encodeURIComponent(query)}&retmax=2&retmode=json`;
+    const searchUrl = `${baseUrl}esearch.fcgi?db=pmc&term=${encodeURIComponent(query)}&retmax=10&retmode=json`;
     const searchResponse = await fetch(searchUrl);
     if (!searchResponse.ok) {
       console.error(`ESearch failed: ${searchResponse.statusText}`);
@@ -256,6 +277,28 @@ const fetchArticles = new Step({
     return { articles };
   }
 });
+const fetchFullArticles = new Step({
+  id: "fetchFullArticles",
+  execute: async ({ context }) => {
+    const baseUrl = "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_xml/";
+    for (let article of context.steps.fetchArticles.output.articles) {
+      try {
+        console.log(`Fetching: ${article.fullTextUrl}`);
+        const pmcId = "PMC" + article.fullTextUrl.match(/articles\/(\d+)/)[1];
+        const apiUrl = `${baseUrl}${pmcId}/unicode`;
+        const searchResponse = await fetch(apiUrl);
+        if (!searchResponse.ok) {
+          throw new Error(`HTTP error! status: ${searchResponse.status}`);
+        }
+        const xmlText = await searchResponse.text();
+        console.log(`Successfully fetched ${pmcId}`);
+        console.log(`Content preview: ${xmlText.substring(0, 200)}...`);
+      } catch (error) {
+        console.error(`Error fetching ${article.fullTextUrl}`);
+      }
+    }
+  }
+});
 const structureResponse = new Step({
   id: "structureResponse",
   execute: async ({ context }) => {
@@ -281,8 +324,9 @@ const researchWorkflow = new Workflow({
     query: z.string()
   })
 });
-researchWorkflow.step(generateMeshTerms).then(fetchArticles).then(structureResponse).commit();
+researchWorkflow.step(generateMeshTerms).then(fetchArticles).then(fetchFullArticles).then(structureResponse).commit();
 
+const pgVector = new PgVector(process.env.POSTGRES_CONNECTION_STRING);
 const mastra = new Mastra({
   workflows: {
     myWorkflow,
@@ -290,7 +334,11 @@ const mastra = new Mastra({
   },
   agents: {
     weatherAgent,
-    pubMedResearchAgent
+    pubMedResearchAgent,
+    researchAgent
+  },
+  vectors: {
+    pgVector
   },
   logger: createLogger({
     name: "Mastra",

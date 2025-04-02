@@ -48,6 +48,6 @@ Focus on precision and relevance. Do not fetch articles, add synonyms, or apply 
       "note": "No valid MeSH terms identified"
     }
   `,
-  model: googleProvider('gemini-1.5-flash-latest'),
+  model: googleProvider('gemini-2.0-flash-001'),
   // model: anthropic('claude-3-sonnet-20240229'),
 });

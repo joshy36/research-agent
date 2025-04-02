@@ -49,7 +49,7 @@ const fetchArticles = new Step({
 
     const baseUrl = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/';
     const query = keyTerms.map((term) => `${term}[mesh]`).join(' AND ');
-    const searchUrl = `${baseUrl}esearch.fcgi?db=pmc&term=${encodeURIComponent(query)}&retmax=2&retmode=json`;
+    const searchUrl = `${baseUrl}esearch.fcgi?db=pmc&term=${encodeURIComponent(query)}&retmax=10&retmode=json`;
 
     const searchResponse = await fetch(searchUrl);
     if (!searchResponse.ok) {
@@ -92,6 +92,48 @@ const fetchArticles = new Step({
       });
 
     return { articles };
+  },
+});
+
+const fetchFullArticles = new Step({
+  id: 'fetchFullArticles',
+  execute: async ({ context }) => {
+    const baseUrl =
+      'https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_xml/';
+
+    const results = [];
+
+    for (let article of context.steps.fetchArticles.output.articles) {
+      try {
+        console.log(`Fetching: ${article.fullTextUrl}`);
+        const pmcId = 'PMC' + article.fullTextUrl.match(/articles\/(\d+)/)[1];
+        const apiUrl = `${baseUrl}${pmcId}/unicode`;
+
+        // Fetch the article
+        const searchResponse = await fetch(apiUrl);
+
+        if (!searchResponse.ok) {
+          throw new Error(`HTTP error! status: ${searchResponse.status}`);
+        }
+
+        // Get the XML text from the response
+        const xmlText = await searchResponse.text();
+
+        // Store the result
+        results.push({
+          pmcId: pmcId,
+          url: apiUrl,
+          xmlContent: xmlText,
+          success: true,
+        });
+
+        console.log(`Successfully fetched ${pmcId}`);
+        // Optionally log a preview of the content
+        console.log(`Content preview: ${xmlText.substring(0, 200)}...`);
+      } catch (error) {
+        console.error(`Error fetching ${article.fullTextUrl}`);
+      }
+    }
   },
 });
 
@@ -153,5 +195,6 @@ export const researchWorkflow = new Workflow({
 researchWorkflow
   .step(generateMeshTerms)
   .then(fetchArticles)
+  .then(fetchFullArticles)
   .then(structureResponse)
   .commit();
