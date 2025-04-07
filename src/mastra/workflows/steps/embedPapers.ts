@@ -1,10 +1,9 @@
 import { googleProvider } from '@/providers/google';
-import { mastra } from '@/src/mastra';
+import { Step } from '@mastra/core';
 import { MDocument } from '@mastra/rag';
 import { embedMany } from 'ai';
-import { NextResponse } from 'next/server';
+import { mastra } from '../..';
 
-// Helper function to process chunks in batches
 async function embedInBatches(chunks: { text: string }[], batchSize: number) {
   const embeddings: number[][] = [];
   for (let i = 0; i < chunks.length; i += batchSize) {
@@ -18,10 +17,16 @@ async function embedInBatches(chunks: { text: string }[], batchSize: number) {
   return embeddings;
 }
 
-export async function POST(request: Request) {
-  try {
-    // Load the paper
-    const paperUrl = 'https://arxiv.org/html/1706.03762';
+export const embedPapers = new Step({
+  id: 'embedPaper',
+  execute: async ({ context }) => {
+    // use pmid not pmcid
+    const paperUrl =
+      'https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/30248967/unicode';
+
+    // https://www.ncbi.nlm.nih.gov/pmc/articles/6212970/
+    //'https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/30248967/unicode';
+
     const response = await fetch(paperUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch paper: ${response.status}`);
@@ -58,23 +63,5 @@ export async function POST(request: Request) {
         source: 'transformer-paper',
       })),
     });
-
-    return NextResponse.json(
-      {
-        success: true,
-        chunkCount: chunks.length,
-        message: 'Paper embedded successfully',
-      },
-      { status: 200 },
-    );
-  } catch (error) {
-    console.error('Error processing paper:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+});

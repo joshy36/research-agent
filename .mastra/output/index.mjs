@@ -2,16 +2,16 @@ import { evaluate } from '@mastra/core/eval';
 import { registerHook, AvailableHooks } from '@mastra/core/hooks';
 import { TABLE_EVALS } from '@mastra/core/storage';
 import { checkEvalStorageFields } from '@mastra/core/utils';
-import { Mastra, isVercelTool } from '@mastra/core';
+import { Step, Mastra, isVercelTool } from '@mastra/core';
 import { createLogger } from '@mastra/core/logger';
 import { PgVector } from '@mastra/pg';
 import { google, createGoogleGenerativeAI } from '@ai-sdk/google';
 import { Agent } from '@mastra/core/agent';
-import { openai } from '@ai-sdk/openai';
-import { createVectorQueryTool } from '@mastra/rag';
+import { createVectorQueryTool, MDocument } from '@mastra/rag';
 import { createTool } from '@mastra/core/tools';
 import { z, ZodFirstPartyTypeKind, ZodOptional } from 'zod';
-import { Workflow, Step } from '@mastra/core/workflows';
+import { Workflow } from '@mastra/core/workflows';
+import { embedMany } from 'ai';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { pathToFileURL } from 'url';
@@ -169,69 +169,81 @@ Focus on precision and relevance. Do not fetch articles, add synonyms, or apply 
 const vectorQueryTool = createVectorQueryTool({
   vectorStoreName: "pgVector",
   indexName: "papers",
-  model: openai.embedding("text-embedding-3-small")
+  model: googleProvider.textEmbeddingModel("text-embedding-004")
 });
 const researchAgent = new Agent({
-  name: "Research Assistant",
+  name: "researchAgent",
   instructions: `You are a helpful research assistant that analyzes academic papers and technical documents.
     Use the provided vector query tool to find relevant information from your knowledge base, 
     and provide accurate, well-supported answers based on the retrieved content.
     Focus on the specific content available in the tool and acknowledge if you cannot find sufficient information to answer a question.
-    Base your responses only on the content provided, not on general knowledge.`,
+    Base your responses only on the content provided, not on general knowledge. Please cite your sources.`,
   model: googleProvider("gemini-2.0-flash-001"),
   tools: {
     vectorQueryTool
   }
 });
 
-const stepOne = new Step({
-  id: "stepOne",
-  execute: async ({ context }) => ({
-    doubledValue: context.triggerData.inputValue * 2
-  })
-});
-const stepTwo = new Step({
-  id: "stepTwo",
+const agentResponse = new Step({
+  id: "agentResponse",
   execute: async ({ context }) => {
-    if (context.steps.stepOne.status !== "success") {
-      return { incrementedValue: 0 };
-    }
-    return { incrementedValue: context.steps.stepOne.output.doubledValue + 1 };
+    console.log(context.triggerData.query);
+    const agent = mastra.getAgent("researchAgent");
+    const query = context.triggerData.query;
+    const stream = await agent.stream(query);
+    console.log("\nQuery:", query);
+    return stream.toDataStreamResponse();
   }
 });
-const stepThree = new Step({
-  id: "stepThree",
-  execute: async ({ context }) => {
-    if (context.steps.stepTwo.status !== "success") {
-      return { tripledValue: 0 };
-    }
-    return { tripledValue: context.steps.stepTwo.output.incrementedValue * 3 };
-  }
-});
-const myWorkflow = new Workflow({
-  name: "my-workflow",
-  triggerSchema: z.object({
-    inputValue: z.number()
-  })
-});
-myWorkflow.step(stepOne).then(stepTwo).then(stepThree).commit();
 
-const generateMeshTerms = new Step({
-  id: "generateMeshTerms",
+async function embedInBatches(chunks, batchSize) {
+  const embeddings = [];
+  for (let i = 0; i < chunks.length; i += batchSize) {
+    const batch = chunks.slice(i, i + batchSize);
+    const { embeddings: batchEmbeddings } = await embedMany({
+      model: googleProvider.textEmbeddingModel("text-embedding-004"),
+      values: batch.map((chunk) => chunk.text)
+    });
+    embeddings.push(...batchEmbeddings);
+  }
+  return embeddings;
+}
+const embedPapers = new Step({
+  id: "embedPaper",
   execute: async ({ context }) => {
-    const agentResponse = await pubMedResearchAgent.generate([
-      { role: "user", content: context.triggerData.query }
-    ]);
-    const jsonString = agentResponse.steps[0].text.replace(/```json\s*/, "").replace(/\s*```/, "").trim();
-    const result = JSON.parse(jsonString);
-    return {
-      parsedQuery: result.parsedQuery,
-      note: result.note || null
-    };
+    const paperUrl = "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/30248967/unicode";
+    const response = await fetch(paperUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch paper: ${response.status}`);
+    }
+    const paperText = await response.text();
+    const doc = MDocument.fromText(paperText);
+    const chunks = await doc.chunk({
+      strategy: "recursive",
+      size: 512,
+      overlap: 50,
+      separator: "\n"
+    });
+    const embeddings = await embedInBatches(chunks, 100);
+    const vectorStore = mastra.getVector("pgVector");
+    await vectorStore.createIndex({
+      indexName: "papers",
+      dimension: 768
+      // text-embedding-004 outputs 768-dimensional embeddings
+    });
+    await vectorStore.upsert({
+      indexName: "papers",
+      vectors: embeddings,
+      metadata: chunks.map((chunk) => ({
+        text: chunk.text,
+        source: "transformer-paper"
+      }))
+    });
   }
 });
-const fetchArticles = new Step({
-  id: "fetchArticles",
+
+const fetchArticlesMetadata = new Step({
+  id: "fetchArticlesMetadata",
   execute: async ({ context }) => {
     if (context.steps.generateMeshTerms.status !== "success") {
       return { articles: [] };
@@ -277,59 +289,33 @@ const fetchArticles = new Step({
     return { articles };
   }
 });
-const fetchFullArticles = new Step({
-  id: "fetchFullArticles",
+
+const generateMeshTerms = new Step({
+  id: "generateMeshTerms",
   execute: async ({ context }) => {
-    const baseUrl = "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_xml/";
-    for (let article of context.steps.fetchArticles.output.articles) {
-      try {
-        console.log(`Fetching: ${article.fullTextUrl}`);
-        const pmcId = "PMC" + article.fullTextUrl.match(/articles\/(\d+)/)[1];
-        const apiUrl = `${baseUrl}${pmcId}/unicode`;
-        const searchResponse = await fetch(apiUrl);
-        if (!searchResponse.ok) {
-          throw new Error(`HTTP error! status: ${searchResponse.status}`);
-        }
-        const xmlText = await searchResponse.text();
-        console.log(`Successfully fetched ${pmcId}`);
-        console.log(`Content preview: ${xmlText.substring(0, 200)}...`);
-      } catch (error) {
-        console.error(`Error fetching ${article.fullTextUrl}`);
-      }
-    }
-  }
-});
-const structureResponse = new Step({
-  id: "structureResponse",
-  execute: async ({ context }) => {
-    if (context.steps.fetchArticles.status !== "success") {
-      return {
-        parsedQuery: context.steps.generateMeshTerms.output?.parsedQuery || { rawTerms: [], keyTerms: [] },
-        articles: [],
-        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-        note: context.steps.generateMeshTerms.output?.note || "Step failed"
-      };
-    }
+    const agentResponse = await pubMedResearchAgent.generate([
+      { role: "user", content: context.triggerData.query }
+    ]);
+    const jsonString = agentResponse.steps[0].text.replace(/```json\s*/, "").replace(/\s*```/, "").trim();
+    const result = JSON.parse(jsonString);
     return {
-      parsedQuery: context.steps.generateMeshTerms.output.parsedQuery,
-      articles: context.steps.fetchArticles.output.articles,
-      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-      note: context.steps.generateMeshTerms.output?.note || null
+      parsedQuery: result.parsedQuery,
+      note: result.note || null
     };
   }
 });
+
 const researchWorkflow = new Workflow({
   name: "pubmed-research-workflow",
   triggerSchema: z.object({
     query: z.string()
   })
 });
-researchWorkflow.step(generateMeshTerms).then(fetchArticles).then(fetchFullArticles).then(structureResponse).commit();
+researchWorkflow.step(generateMeshTerms).then(fetchArticlesMetadata).then(embedPapers).then(agentResponse).commit();
 
 const pgVector = new PgVector(process.env.POSTGRES_CONNECTION_STRING);
 const mastra = new Mastra({
   workflows: {
-    myWorkflow,
     researchWorkflow
   },
   agents: {

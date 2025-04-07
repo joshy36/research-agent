@@ -1,14 +1,11 @@
 'use client';
 
+import { useChat } from '@ai-sdk/react';
 import { BookOpen, Clock, ExternalLink, FileText, Users } from 'lucide-react';
 import { useState } from 'react';
 import { getResearchInfo } from './actions';
 
 interface ResearchResult {
-  parsedQuery: {
-    rawTerms: string[];
-    keyTerms: string[];
-  };
   articles: {
     pmid: string;
     pmcid: string;
@@ -18,11 +15,18 @@ interface ResearchResult {
     pubDate: string;
     fullTextUrl: string;
   }[];
-  timestamp: string;
-  note?: string | null;
 }
 
 export function Research() {
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit: handleSubmitChat,
+  } = useChat({
+    api: '/path-to-your-agent-stream-api-endpoint',
+  });
+
   const [research, setResearch] = useState<ResearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -40,11 +44,14 @@ export function Research() {
     try {
       const result = await getResearchInfo(query);
       console.log('Raw result:', result);
-      const researchData = result?.results?.structureResponse?.output;
+      const researchData =
+        result?.results?.fetchArticlesMetadata?.output.articles;
+      console.log(researchData);
       if (!researchData) {
         throw new Error('Invalid response structure');
       }
-      setResearch(researchData as ResearchResult);
+      setResearch({ articles: researchData } as ResearchResult);
+      console.log('Set research:', { articles: researchData });
     } catch (err) {
       setError('Failed to fetch research data. Please try again.');
       console.error(err);
@@ -164,59 +171,19 @@ export function Research() {
         {/* Research Results */}
         {research && (
           <div className="space-y-6">
-            {/* Query Analysis Card */}
-            <div className="rounded-xl border border-gray-700/50 bg-gray-800/80 p-6 shadow-lg backdrop-blur-md">
-              <h2 className="mb-4 flex items-center gap-2 text-2xl font-bold text-gray-100">
-                <FileText className="h-6 w-6" />
-                Query Analysis
-              </h2>
-              <div className="space-y-3 text-gray-300">
-                <p className="text-sm">
-                  <span className="font-semibold text-gray-200">
-                    Raw Terms:
-                  </span>{' '}
-                  <span className="text-gray-400">
-                    {research.parsedQuery.rawTerms.join(', ')}
-                  </span>
-                </p>
-                <p className="text-sm">
-                  <span className="font-semibold text-gray-200">
-                    Key Terms:
-                  </span>{' '}
-                  <span className="text-gray-400">
-                    {research.parsedQuery.keyTerms.join(', ')}
-                  </span>
-                </p>
-                {research.note && (
-                  <p className="text-sm">
-                    <span className="font-semibold text-gray-200">Note:</span>{' '}
-                    <span className="text-gray-400">{research.note}</span>
-                  </p>
-                )}
-                <p className="text-sm">
-                  <span className="font-semibold text-gray-200">
-                    Timestamp:
-                  </span>{' '}
-                  <span className="text-gray-400">
-                    {new Date(research.timestamp).toLocaleString()}
-                  </span>
-                </p>
-              </div>
-            </div>
-
             {/* Articles Grid */}
             <div className="rounded-xl border border-gray-700/50 bg-gray-800/80 p-6 shadow-lg backdrop-blur-md">
               <h2 className="mb-6 flex items-center gap-2 text-2xl font-bold text-gray-100">
                 <BookOpen className="h-6 w-6" />
-                Articles ({research.articles.length})
+                Articles ({research.articles?.length})
               </h2>
-              {research.articles.length === 0 ? (
+              {research.articles?.length === 0 ? (
                 <p className="text-gray-400">
                   No articles found for this query.
                 </p>
               ) : (
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  {research.articles.map((article, index) => (
+                  {research.articles?.map((article, index) => (
                     <div
                       key={article.pmcid}
                       className="rounded-lg border border-gray-600/50 bg-gray-700/30 p-5 transition-colors hover:border-gray-500/50"
