@@ -6,19 +6,35 @@ import { supabase } from './supabase.js';
 const app = express();
 const PORT = 3001;
 
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
 app.use(express.json());
 
 app.post('/queue', async (req: Request, res: Response) => {
   try {
-    const { message } = req.body as { message?: string };
+    const { message, user } = req.body as { message?: string; user?: string };
     if (!message) {
       res.status(400).json({ error: 'Message is required' });
       return;
     }
 
+    if (!user) {
+      res.status(400).json({ error: 'User ID is required' });
+      return;
+    }
+
     const { data, error } = await supabase
       .from('tasks')
-      .insert({ message, state: 'step1' })
+      .insert({ message, state: 'step1', user_id: user })
       .select('task_id')
       .single();
 
