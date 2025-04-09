@@ -1,0 +1,33 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev:tsc": "tsc --watch --preserveWatchOutput",
+    "dev:node": "node --enable-source-maps --watch dist/index.js",
+    "dev": "concurrently \"npm run dev:tsc\" \"npm run dev:node\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "amqplib": "^0.10.7",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.7",
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.14.0",
+    "concurrently": "^9.1.2",
+    "esbuild": "^0.25.2",
+    "nodemon": "^3.1.9",
+    "npm-run-all": "^4.1.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
