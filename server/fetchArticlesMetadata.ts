@@ -1,13 +1,13 @@
 import { Context } from './types.js';
 
 export const fetchArticlesMetadata = async (context: Context) => {
-  const keyTerms = context.parsedQuery.keyTerms;
+  const keyTerms = context.parsedQuery?.keyTerms;
   console.log(keyTerms);
 
   const baseUrl = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/';
-  const query = keyTerms.map((term) => `${term}[mesh]`).join(' AND ');
+  const query = keyTerms?.map((term) => `${term}[mesh]`).join(' AND ');
   const searchUrl = `${baseUrl}esearch.fcgi?db=pmc&term=${encodeURIComponent(
-    query
+    query ?? ''
   )}&retmax=10&retmode=json`;
 
   const searchResponse = await fetch(searchUrl);

@@ -1,11 +1,13 @@
-import { generateObject } from 'ai';
-import * as amqp from 'amqplib';
-import { z } from 'zod';
-import { google } from '@ai-sdk/google';
-import { prompt } from './prompt.js';
 import 'dotenv/config';
-import { sendToQueue } from './rabbitmq.js';
+import * as amqp from 'amqplib';
+
+import { z } from 'zod';
+import { generateObject } from 'ai';
+import { prompt } from './prompt.js';
 import { Context } from './types.js';
+import { google } from '@ai-sdk/google';
+import { supabase } from './supabase.js';
+import { sendToQueue } from './rabbitmq.js';
 import { fetchArticlesMetadata } from './fetchArticlesMetadata.js';
 
 const QUEUE_NAME = 'task_queue';
@@ -40,7 +42,11 @@ async function startWorker() {
                 prompt: 'User query: ' + context.message + ' ' + prompt,
               });
 
-              console.log(object);
+              await supabase
+                .from('tasks')
+                .update({ state: 'step2', parsed_query: object.parsedQuery })
+                .eq('task_id', context.taskId);
+
               Object.assign(context, {
                 parsedQuery: object.parsedQuery,
                 state: 'step2',
@@ -50,11 +56,19 @@ async function startWorker() {
               break;
             }
             case 'step2': {
-              console.log('STEP2!!!');
+              console.log('step 2: fetching articles metadata...');
               const articles = await fetchArticlesMetadata(context);
 
-              console.log(articles);
-              context.state = 'step3';
+              console.log('articles done');
+              await supabase
+                .from('tasks')
+                .update({ state: 'step3', articles })
+                .eq('task_id', context.taskId);
+
+              Object.assign(context, {
+                articles: articles,
+                state: 'step3',
+              });
               break;
             }
             default:

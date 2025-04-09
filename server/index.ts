@@ -1,5 +1,7 @@
+import 'dotenv/config';
 import express, { Request, Response } from 'express';
 import { sendToQueue, getQueueStatus } from './rabbitmq.js';
+import { supabase } from './supabase.js';
 
 const app = express();
 const PORT = 3001;
@@ -13,12 +15,23 @@ app.post('/queue', async (req: Request, res: Response) => {
       res.status(400).json({ error: 'Message is required' });
       return;
     }
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert({ message, state: 'step1' })
+      .select('task_id')
+      .single();
+
+    if (error) throw error;
+
+    const taskId = data.task_id;
+
     await sendToQueue({
+      taskId,
       message,
       state: 'step1',
-      parsedQuery: { keyTerms: [], rawTerms: [] },
     });
-    res.status(200).json({ status: 'Message queued', message });
+    res.status(200).json({ status: 'Message queued', taskId });
   } catch (error) {
     res.status(500).json({
       error: 'Failed to queue message',
