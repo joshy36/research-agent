@@ -13,7 +13,11 @@ app.post('/queue', async (req: Request, res: Response) => {
       res.status(400).json({ error: 'Message is required' });
       return;
     }
-    await sendToQueue(message);
+    await sendToQueue({
+      message,
+      state: 'step1',
+      parsedQuery: { keyTerms: [], rawTerms: [] },
+    });
     res.status(200).json({ status: 'Message queued', message });
   } catch (error) {
     res.status(500).json({

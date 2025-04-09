@@ -7,17 +7,26 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:worker": "node dist/worker.js",
     "dev:tsc": "tsc --watch --preserveWatchOutput",
     "dev:node": "node --enable-source-maps --watch dist/index.js",
+    "dev:node:worker": "node --enable-source-maps --watch dist/worker.js",
     "dev": "concurrently \"npm run dev:tsc\" \"npm run dev:node\"",
+    "dev:worker": "concurrently \"npm run dev:tsc\" \"npm run dev:node:worker\"",
+    "dev:all": "concurrently \"npm run dev:tsc\" \"npm run dev:node\" \"npm run dev:node:worker\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@ai-sdk/google": "^1.2.10",
+    "@ai-sdk/openai": "^1.3.9",
+    "ai": "^4.3.4",
     "amqplib": "^0.10.7",
-    "express": "^5.1.0"
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.7",
@@ -28,6 +37,7 @@
     "nodemon": "^3.1.9",
     "npm-run-all": "^4.1.5",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.3",
     "typescript": "^5.8.3"
   }
 }

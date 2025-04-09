@@ -1,4 +1,5 @@
 import * as amqp from 'amqplib';
+import { Context } from './types.js';
 
 const QUEUE_NAME = 'task_queue';
 const RABBITMQ_URL = 'amqp://localhost:5672';
@@ -19,10 +20,15 @@ async function connectRabbitMQ(): Promise<amqp.Channel> {
   }
 }
 
-export async function sendToQueue(message: string): Promise<void> {
+export async function sendToQueue(context: Context): Promise<void> {
   const ch = await connectRabbitMQ();
-  ch.sendToQueue(QUEUE_NAME, Buffer.from(message), { persistent: true });
-  console.log('Queued:', message);
+  const messageWithState = {
+    context: context,
+  };
+  ch.sendToQueue(QUEUE_NAME, Buffer.from(JSON.stringify(messageWithState)), {
+    persistent: true,
+  });
+  console.log('Queued:', messageWithState);
 }
 
 export async function getQueueStatus(): Promise<{
