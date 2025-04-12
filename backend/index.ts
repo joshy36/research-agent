@@ -1,7 +1,10 @@
 import 'dotenv/config';
 import express, { Request, Response } from 'express';
-import { sendToQueue, getQueueStatus } from './rabbitmq.js';
+import { sendToQueue, getQueueStatus, purgeQueue } from './rabbitmq.js';
 import { supabase } from './supabase.js';
+import { generateObject } from 'ai';
+import { google } from '@ai-sdk/google';
+import { z } from 'zod';
 
 const app = express();
 const PORT = 3001;
@@ -34,20 +37,51 @@ app.post('/queue', async (req: Request, res: Response) => {
 
     const { data, error } = await supabase
       .from('tasks')
-      .insert({ message, state: 'step1', user_id: user })
+      .insert({ message, state: 'parseQuery', user_id: user })
       .select('task_id')
       .single();
 
+    const { object } = await generateObject({
+      model: google('gemini-1.5-flash-latest'),
+      schema: z.object({
+        title: z.string(),
+      }),
+      prompt: `Generate a short, descriptive title (max 5 words) for this research query: ${message}`,
+    });
+
+    const title = object.title;
+
+    const { data: chatData, error: chatError } = await supabase
+      .from('chats')
+      .insert({
+        user_id: user,
+        task_id: data!.task_id,
+        title: title,
+      })
+      .select('id')
+      .single();
+
+    if (chatError) throw chatError;
     if (error) throw error;
+
+    const { error: messageError } = await supabase.from('messages').insert({
+      chat_id: chatData.id,
+      content: message,
+      role: 'user',
+    });
+
+    if (messageError) throw messageError;
 
     const taskId = data.task_id;
 
     await sendToQueue({
       taskId,
       message,
-      state: 'step1',
+      state: 'parseQuery',
     });
-    res.status(200).json({ status: 'Message queued', taskId });
+    res
+      .status(200)
+      .json({ status: 'Message queued', taskId: taskId, chatId: chatData.id });
   } catch (error) {
     res.status(500).json({
       error: 'Failed to queue message',
@@ -63,6 +97,18 @@ app.get('/queue/status', async (_req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({
       error: 'Failed to get queue status',
+      details: (error as Error).message,
+    });
+  }
+});
+
+app.post('/queue/purge', async (_req: Request, res: Response) => {
+  try {
+    await purgeQueue();
+    res.status(200).json({ status: 'Queue purged successfully' });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to purge queue',
       details: (error as Error).message,
     });
   }

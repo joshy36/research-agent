@@ -42,3 +42,15 @@ export async function getQueueStatus(): Promise<{
     consumerCount: queue.consumerCount,
   };
 }
+
+export const purgeQueue = async () => {
+  const connection = await amqp.connect(RABBITMQ_URL);
+  const channel = await connection.createChannel();
+  try {
+    await channel.purgeQueue(QUEUE_NAME);
+    console.log('Queue purged');
+  } finally {
+    await channel.close();
+    await connection.close();
+  }
+};

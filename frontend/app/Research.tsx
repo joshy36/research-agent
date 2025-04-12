@@ -7,7 +7,7 @@ import { useState } from 'react';
 export function Research() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const { userId } = useAuth();
+  const { user } = useAuth();
 
   async function handleSubmit(formData: FormData) {
     const query = formData.get('query') as string;
@@ -22,10 +22,11 @@ export function Research() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: query, user: userId }),
+        body: JSON.stringify({ message: query, user: user?.id }),
       }).then((res) => res.json());
       console.log('Raw result:', result);
-      router.push(`/chat/${result.taskId}`);
+
+      router.push(`/chat/${result.chatId}`);
     } catch (err) {
       setError('Failed to fetch research data. Please try again.');
       console.error(err);
@@ -39,9 +40,12 @@ export function Research() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-900 p-6">
+    <div className="flex items-center justify-center">
       <div className="w-full max-w-4xl space-y-6">
         {/* Search Form */}
+        <h1 className="text-center font-bold text-4xl">
+          What would you like to research?
+        </h1>
         <div className="">
           <form
             onSubmit={async (e) => {
@@ -55,7 +59,7 @@ export function Research() {
               <input
                 name="query"
                 placeholder="Enter research query (e.g., 'What are the effects of magnesium on sleep?')"
-                className="w-full rounded-2xl border border-gray-700/50 bg-gray-800/90 p-3 pr-12 text-gray-200 placeholder-gray-500"
+                className="w-full rounded-2xl border border-gray-700/50 bg-gray-700/50 p-3 pr-12 text-gray-200 placeholder-gray-500"
               />
               <button
                 type="submit"

@@ -1,52 +1,52 @@
 'use client';
 
-import { createClient } from '@supabase/supabase-js';
+import { useAuth } from '@/providers/AuthProvider';
+import { supabase } from '@/providers/supabase';
 import { SquareTerminal } from 'lucide-react';
-import * as React from 'react';
-
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { ComponentProps, useEffect, useState } from 'react';
 import { NavMain } from './nav-main';
+import { NavUser } from './nav-user';
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarRail,
 } from './ui/sidebar';
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
+export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
+  const [chats, setChats] = useState<any[]>([]);
+  const { user } = useAuth();
+  const pathname = usePathname();
+  const chatId = pathname.split('/').pop();
+  console.log('CHATID: ', chatId);
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const [tasks, setTasks] = React.useState<any[]>([]);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    async function fetchTasks() {
+  useEffect(() => {
+    async function fetchChats() {
       try {
         const { data, error } = await supabase
-          .from('tasks')
+          .from('chats')
           .select('*')
           .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        const taskItems = data.map((task) => ({
-          title: task.message,
-          url: `/chat/${task.task_id}`,
+        const chatItems = data.map((chat) => ({
+          id: chat.id,
+          title: chat.title,
+          url: `/chat/${chat.id}`,
         }));
 
-        setTasks(taskItems);
+        setChats(chatItems);
       } catch (error) {
-        console.error('Error fetching tasks:', error);
-      } finally {
-        setLoading(false);
+        console.error('Error fetching chats:', error);
       }
     }
 
-    fetchTasks();
-  }, []);
+    fetchChats();
+  }, [chatId]);
 
   const navItems = [
     {
@@ -54,38 +54,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       url: '',
       icon: SquareTerminal,
       isActive: true,
-      items: tasks,
+      items: chats,
     },
   ];
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <button
-          onClick={() => (window.location.href = '/')}
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-colors hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-50 dark:hover:bg-gray-800"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-4 w-4"
-          >
-            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <polyline points="9 22 9 12 15 12 15 22" />
-          </svg>
+        <Link href="/" className="hover:bg-sidebar-accent rounded-md p-2">
           Home
-        </button>
+        </Link>
       </SidebarHeader>
       <SidebarContent>
-        {loading ? <div>Loading tasks...</div> : <NavMain items={navItems} />}
+        <NavMain items={navItems} pathname={pathname} />
       </SidebarContent>
+      <SidebarFooter>
+        <NavUser user={user} />
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );

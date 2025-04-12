@@ -1,4 +1,8 @@
-export type State = 'step1' | 'step2' | 'step3';
+export type State =
+  | 'parseQuery'
+  | 'fetchMetadata'
+  | 'processPaper'
+  | 'Complete';
 
 export interface Context {
   taskId: string;
