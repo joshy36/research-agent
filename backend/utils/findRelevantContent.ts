@@ -1,5 +1,5 @@
-import { googleProvider } from '@/providers/google';
-import { createClient } from '@/supabase/server';
+import { googleProvider } from './generateEmbedding.js';
+import { supabase } from '../supabase.js';
 import { embed } from 'ai';
 
 export const generateEmbedding = async (value: string): Promise<number[]> => {
@@ -12,18 +12,16 @@ export const generateEmbedding = async (value: string): Promise<number[]> => {
 };
 
 export const findRelevantContent = async (userQuery: string) => {
-  console.log('CONTENT');
+  console.log('findRelevantContent: ', userQuery);
   const userQueryEmbedded = await generateEmbedding(userQuery);
-
-  const supabase = await createClient();
 
   const { data: similarGuides, error } = await supabase.rpc(
     'match_embeddings',
     {
       query_embedding: userQueryEmbedded,
       match_threshold: 0.6, // Similarity threshold (adjust as needed)
-      match_count: 4, // Limit to 4 results
-    },
+      match_count: 20, // Limit to 4 results
+    }
   );
 
   console.log('similar: ', similarGuides);

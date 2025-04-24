@@ -12,7 +12,7 @@ export interface Context {
     rawTerms: string[];
     keyTerms: string[];
   };
-  articles?: {
+  article?: {
     pmid: any;
     pmcid: any;
     title: any;
@@ -20,5 +20,5 @@ export interface Context {
     journal: any;
     pubDate: any;
     fullTextUrl: string;
-  }[];
+  };
 }

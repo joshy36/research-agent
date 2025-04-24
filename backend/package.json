@@ -14,7 +14,8 @@
     "dev": "concurrently \"npm run dev:tsc\" \"npm run dev:node\"",
     "dev:worker": "concurrently \"npm run dev:tsc\" \"npm run dev:node:worker\"",
     "dev:all": "concurrently \"npm run dev:tsc\" \"npm run dev:node\" \"npm run dev:node:worker\"",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "queue": "docker start rabbitmq"
   },
   "keywords": [],
   "author": "",

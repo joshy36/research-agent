@@ -51,7 +51,7 @@ export default function ChatPage({
   const { messages, setMessages, input, handleInputChange, handleSubmit } =
     useChat({
       maxSteps: 3,
-      api: '/api/chat',
+      api: 'http://localhost:3001/api/chat',
       body: { chatId: params.id },
     });
   const messagesEndRef = useRef<HTMLDivElement>(null); // From step 1
@@ -293,7 +293,10 @@ export default function ChatPage({
                           rehypePlugins={[rehypeRaw]}
                           // className="prose prose-invert max-w-none"
                         >
-                          {part.text}
+                          {
+                            //@ts-ignore
+                            part.text
+                          }
                         </ReactMarkdown>
                       ))}
                 </div>

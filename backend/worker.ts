@@ -29,7 +29,6 @@ async function startWorker() {
 
         try {
           const context = JSON.parse(msg.content.toString()).context as Context;
-          console.log('Received:', context);
 
           switch (context.state) {
             case 'parseQuery': {
@@ -70,17 +69,19 @@ async function startWorker() {
                 .update({ state: 'processPaper', articles })
                 .eq('task_id', context.taskId);
 
-              await sendToQueue({
-                ...context,
-                ...articles,
-                state: 'processPaper',
-              });
+              for (const article of articles.articles) {
+                await sendToQueue({
+                  ...context,
+                  article: article,
+                  state: 'processPaper',
+                });
+              }
               break;
             }
             case 'processPaper': {
               console.log('Step 3: Processing paper and embeddings...');
-              const paperUrl =
-                'https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/30248967/unicode';
+              console.log('article: ', context.article);
+              const paperUrl = `https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/${context.article?.pmid}/unicode`;
               const { data: existingResource, error } = await supabase
                 .from('resources')
                 .select('*')
@@ -90,7 +91,7 @@ async function startWorker() {
 
               if (existingResource?.length > 0) {
                 console.log(`Resource already exists for URL: ${paperUrl}`);
-                console.log('finalize1');
+
                 await supabase
                   .from('tasks')
                   .update({ state: 'Complete' })
@@ -103,6 +104,7 @@ async function startWorker() {
               if (!response.ok) {
                 throw new Error(`Failed to fetch paper: ${response.status}`);
               }
+
               const paperJson = await response.json();
 
               await chunkAndEmbedPaper(paperJson, context.taskId, paperUrl);
