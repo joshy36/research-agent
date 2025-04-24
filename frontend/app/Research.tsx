@@ -1,11 +1,13 @@
 'use client';
 
 import { useAuth } from '@/providers/AuthProvider';
+import { Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 export function Research() {
   const [error, setError] = useState<string | null>(null);
+  const [input, setInput] = useState('');
   const router = useRouter();
   const { user } = useAuth();
 
@@ -40,90 +42,83 @@ export function Research() {
   }
 
   return (
-    <div className="flex items-center justify-center">
-      <div className="w-full max-w-4xl space-y-6">
-        {/* Search Form */}
-        <h1 className="text-center font-bold text-4xl">
-          What would you like to research?
-        </h1>
-        <div className="">
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const formData = new FormData(e.currentTarget);
-              await handleSubmit(formData);
-            }}
-            className="flex flex-col gap-4"
-          >
-            <div className="relative w-full">
-              <input
-                name="query"
-                placeholder="Enter research query (e.g., 'What are the effects of magnesium on sleep?')"
-                className="w-full rounded-2xl border border-gray-700/50 bg-gray-700/50 p-3 pr-12 text-gray-200 placeholder-gray-500"
-              />
-              <button
-                type="submit"
-                className="absolute top-1/2 right-2 -translate-y-1/2 transform cursor-pointer rounded-xl bg-white p-2 text-black transition-all duration-200 hover:bg-gray-200 disabled:cursor-not-allowed disabled:bg-gray-600"
-              >
-                <svg
-                  className="h-5 w-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-              </button>
-            </div>
-            {/* Suggested Query Buttons */}
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <button
-                type="button"
-                onClick={() =>
-                  handleSuggestedQuery(
-                    'What are the effects of magnesium on sleep?',
-                  )
-                }
-                className="cursor-pointer rounded-lg bg-gray-700/50 p-2 text-gray-200 transition-colors hover:bg-gray-600/50 disabled:cursor-not-allowed disabled:bg-gray-600/30 disabled:text-gray-500"
-              >
-                What are the effects of magnesium on sleep?
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  handleSuggestedQuery(
-                    'How does exercise impact mental health?',
-                  )
-                }
-                className="cursor-pointer rounded-lg bg-gray-700/50 p-2 text-gray-200 transition-colors hover:bg-gray-600/50 disabled:cursor-not-allowed disabled:bg-gray-600/30 disabled:text-gray-500"
-              >
-                How does exercise impact mental health?
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  handleSuggestedQuery(
-                    'What is the role of gut microbiome in immunity?',
-                  )
-                }
-                className="cursor-pointer rounded-lg bg-gray-700/50 p-2 text-gray-200 transition-colors hover:bg-gray-600/50 disabled:cursor-not-allowed disabled:bg-gray-600/30 disabled:text-gray-500"
-              >
-                What is the role of gut microbiome in immunity?
-              </button>
-            </div>
-          </form>
-        </div>
+    <div className="flex flex-col h-full">
+      <div className="max-w-3xl mx-auto flex flex-col h-full w-full px-4">
+        <div className="flex-1 overflow-y-auto custom-scrollbar pb-4">
+          <div className="space-y-6 py-8">
+            <h1 className="text-3xl font-bold text-white text-center">
+              What would you like to research?
+            </h1>
 
-        {/* Error Message */}
-        {error && (
-          <div className="rounded-xl border border-red-800/50 bg-red-900/80 p-4 text-red-300 shadow-lg backdrop-blur-md">
-            {error}
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                await handleSubmit(formData);
+              }}
+              className="space-y-4"
+            >
+              <div className="relative">
+                <input
+                  name="query"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Enter research query (e.g., 'What are the effects of magnesium on sleep?')"
+                  className="w-full rounded-lg bg-zinc-800/80 backdrop-blur-sm pl-4 pr-12 py-3 text-white placeholder:text-zinc-400 border border-zinc-700/50 focus:outline-none focus:border-zinc-600"
+                />
+                <button
+                  type="submit"
+                  disabled={!input.trim()}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md cursor-pointer p-2 text-zinc-400 hover:text-white hover:bg-zinc-700/50 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors border border-zinc-700/50"
+                >
+                  <Search className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleSuggestedQuery(
+                      'What are the effects of magnesium on sleep?',
+                    )
+                  }
+                  className="cursor-pointer rounded-lg bg-zinc-800/80 backdrop-blur-sm p-3 text-sm text-zinc-300 transition-colors hover:bg-zinc-700/50 disabled:cursor-not-allowed disabled:bg-zinc-600/30 disabled:text-zinc-500"
+                >
+                  What are the effects of magnesium on sleep?
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleSuggestedQuery(
+                      'How does exercise impact mental health?',
+                    )
+                  }
+                  className="cursor-pointer rounded-lg bg-zinc-800/80 backdrop-blur-sm p-3 text-sm text-zinc-300 transition-colors hover:bg-zinc-700/50 disabled:cursor-not-allowed disabled:bg-zinc-600/30 disabled:text-zinc-500"
+                >
+                  How does exercise impact mental health?
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleSuggestedQuery(
+                      'What is the role of gut microbiome in immunity?',
+                    )
+                  }
+                  className="cursor-pointer rounded-lg bg-zinc-800/80 backdrop-blur-sm p-3 text-sm text-zinc-300 transition-colors hover:bg-zinc-700/50 disabled:cursor-not-allowed disabled:bg-zinc-600/30 disabled:text-zinc-500"
+                >
+                  What is the role of gut microbiome in immunity?
+                </button>
+              </div>
+            </form>
+
+            {error && (
+              <div className="rounded-xl border border-red-900 bg-red-950 p-4 text-red-400">
+                {error}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

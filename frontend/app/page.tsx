@@ -1,9 +1,5 @@
-import { Research } from './Research';
+import { redirect } from 'next/navigation';
 
 export default function Home() {
-  return (
-    <main className="">
-      <Research />
-    </main>
-  );
+  redirect('/chat');
 }

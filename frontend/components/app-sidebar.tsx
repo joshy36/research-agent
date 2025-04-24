@@ -2,10 +2,9 @@
 
 import { useAuth } from '@/providers/AuthProvider';
 import { supabase } from '@/providers/supabase';
-import { SquareTerminal } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ComponentProps, useEffect, useState } from 'react';
+import { ComponentProps, useEffect, useMemo, useState } from 'react';
 import { NavMain } from './nav-main';
 import { NavUser } from './nav-user';
 import {
@@ -16,12 +15,8 @@ import {
   SidebarRail,
 } from './ui/sidebar';
 
-export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
+function ChatList({ pathname }: { pathname: string }) {
   const [chats, setChats] = useState<any[]>([]);
-  const { user } = useAuth();
-  const pathname = usePathname();
-  const chatId = pathname.split('/').pop();
-  console.log('CHATID: ', chatId);
 
   useEffect(() => {
     async function fetchChats() {
@@ -46,17 +41,25 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     }
 
     fetchChats();
-  }, [chatId]);
+  }, []); // Remove chatId dependency
 
-  const navItems = [
-    {
-      title: 'Chats',
-      url: '',
-      icon: SquareTerminal,
-      isActive: true,
-      items: chats,
-    },
-  ];
+  const navItems = useMemo(
+    () =>
+      chats.map((chat) => ({
+        id: chat.id,
+        title: chat.title,
+        url: chat.url,
+        isActive: pathname === chat.url,
+      })),
+    [chats, pathname],
+  );
+
+  return <NavMain items={navItems} pathname={pathname} />;
+}
+
+export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
+  const { user } = useAuth();
+  const pathname = usePathname();
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -66,7 +69,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         </Link>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navItems} pathname={pathname} />
+        <ChatList pathname={pathname} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />

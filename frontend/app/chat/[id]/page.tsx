@@ -48,12 +48,18 @@ export default function ChatPage({
     created_at: string;
   } | null>(null);
   const [title, setTitle] = useState('');
-  const { messages, setMessages, input, handleInputChange, handleSubmit } =
-    useChat({
-      maxSteps: 3,
-      api: 'http://localhost:3001/api/chat',
-      body: { chatId: params.id },
-    });
+  const {
+    messages,
+    setMessages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    status,
+  } = useChat({
+    maxSteps: 3,
+    api: 'http://localhost:3001/api/chat',
+    body: { chatId: params.id },
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null); // From step 1
 
   const scrollToBottom = () => {
@@ -203,11 +209,10 @@ export default function ChatPage({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Full-width scrollable container */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {/* Centered content container */}
-        <div className="max-w-3xl mx-auto flex flex-col h-full">
-          <h1 className="text-xl font-semibold text-center mb-6">{title}</h1>
+      {/* Main container for both content and input */}
+      <div className="max-w-3xl mx-auto flex flex-col h-full w-full">
+        {/* Scrollable content area with padding for the fixed input */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar pb-4">
           {/* Task Progress Section */}
           <div className="mb-6 px-4">
             <h3 className="mb-3 text-sm font-semibold text-gray-300 uppercase tracking-wide">
@@ -274,7 +279,7 @@ export default function ChatPage({
                 <div
                   className={`${
                     m.role === 'user'
-                      ? 'bg-gray-300 text-gray-800 p-3 rounded-2xl max-w-[90%] shadow-sm'
+                      ? 'bg-zinc-800 border border-zinc-400/10 text-white p-3 rounded-2xl max-w-[90%] shadow-sm'
                       : 'text-white p-3 rounded-2xl max-w-[100%] shadow-sm'
                   } whitespace-pre-wrap`}
                 >
@@ -305,47 +310,60 @@ export default function ChatPage({
             <div ref={messagesEndRef} />
           </div>
         </div>
-      </div>
 
-      {/* Form remains full-width but content is centered */}
-      <form
-        onSubmit={handleSubmit}
-        className="p-4 pt-6 sticky bottom-0 bg-transparent z-10"
-      >
-        <div className="max-w-3xl mx-auto">
-          <div className="relative">
-            <input
-              type="text"
-              value={input}
-              onChange={handleInputChange}
-              placeholder="Type your message..."
-              className="w-full rounded-lg bg-zinc-800 pl-4 pr-12 py-3 text-white placeholder:text-zinc-400 border border-zinc-700 focus:outline-none focus:border-zinc-600"
-              disabled={loading}
-            />
-            <button
-              type="submit"
-              disabled={loading || !input.trim()}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md cursor-pointer p-2 text-zinc-400 hover:text-white hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors border border-zinc-700"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m6 9 6-6 6 6" />
-                <path d="M12 3v18" />
-              </svg>
-              <span className="sr-only">Send message</span>
-            </button>
-          </div>
+        {/* Input form */}
+        <div className="w-full">
+          <form onSubmit={handleSubmit} className="px-4">
+            <div className="p-3 pt-3 bg-zinc-900/80 backdrop-blur-sm rounded-t-xl border-t border-zinc-700">
+              <div className="flex items-center gap-2 text-sm text-zinc-400 mb-2">
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    status === 'submitted'
+                      ? 'bg-yellow-500'
+                      : status === 'streaming'
+                        ? 'bg-blue-500 animate-pulse'
+                        : status === 'ready'
+                          ? 'bg-green-500 animate-pulse'
+                          : 'bg-red-500'
+                  }`}
+                />
+                <span className="capitalize">{status} - Gemini 1.5 Pro</span>
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={handleInputChange}
+                  placeholder="Type your message..."
+                  className="w-full rounded-lg bg-zinc-800/80 backdrop-blur-sm pl-4 pr-12 py-3 text-white placeholder:text-zinc-400 border border-zinc-700/50 focus:outline-none focus:border-zinc-600"
+                  disabled={loading}
+                />
+                <button
+                  type="submit"
+                  disabled={loading || !input.trim()}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md cursor-pointer p-2 text-zinc-400 hover:text-white hover:bg-zinc-700/50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors border border-zinc-700/50"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="m6 9 6-6 6 6" />
+                    <path d="M12 3v18" />
+                  </svg>
+                  <span className="sr-only">Send message</span>
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

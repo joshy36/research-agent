@@ -3,7 +3,6 @@ import { createClient } from '@/supabase/server';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import SidebarLayout from './sidebar-layout';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -35,9 +34,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased dark`}
       >
-        <AuthProvider user={user}>
-          <SidebarLayout>{children}</SidebarLayout>
-        </AuthProvider>
+        <AuthProvider user={user}>{children}</AuthProvider>
       </body>
     </html>
   );

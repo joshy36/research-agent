@@ -10,8 +10,10 @@ import {
 
 export default function SidebarLayout({
   children,
+  title,
 }: {
   children: React.ReactNode;
+  title?: string;
 }) {
   return (
     <SidebarProvider>
@@ -21,9 +23,10 @@ export default function SidebarLayout({
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
+            {title && <h1 className="text-xl font-semibold">{title}</h1>}
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-4 pt-0">{children}</main>
+        <main className="flex-1 overflow-y-auto pt-0">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
