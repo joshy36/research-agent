@@ -5,6 +5,9 @@ import { useChat } from '@ai-sdk/react';
 import { UIMessage } from 'ai';
 import { CheckCircle2, ChevronDown, Loader2, XCircle } from 'lucide-react';
 import { use, useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
 
 export default function ChatPage({
   params: paramsPromise,
@@ -271,15 +274,28 @@ export default function ChatPage({
                 <div
                   className={`${
                     m.role === 'user'
-                      ? 'bg-gray-300 text-gray-800 p-3 rounded-2xl max-w-[70%] shadow-sm'
-                      : 'text-white p-3 rounded-2xl max-w-[70%] bg-zinc-800 shadow-sm'
+                      ? 'bg-gray-300 text-gray-800 p-3 rounded-2xl max-w-[90%] shadow-sm'
+                      : 'text-white p-3 rounded-2xl max-w-[100%] shadow-sm'
                   } whitespace-pre-wrap`}
                 >
-                  {/* Render text from parts */}
-                  {m.parts.map((part, index) => (
-                    // @ts-ignore
-                    <p key={index}>{part.text}</p>
-                  ))}
+                  {m.role === 'user'
+                    ? // Render user messages as plain text
+                      m.parts.map((part, index) => (
+                        // @ts-ignore
+                        <p key={index}>{part.text}</p>
+                      ))
+                    : // Render assistant messages with Markdown
+                      m.parts.map((part, index) => (
+                        // @ts-ignore
+                        <ReactMarkdown
+                          key={index}
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeRaw]}
+                          // className="prose prose-invert max-w-none"
+                        >
+                          {part.text}
+                        </ReactMarkdown>
+                      ))}
                 </div>
               </div>
             ))}
