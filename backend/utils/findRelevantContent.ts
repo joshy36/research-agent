@@ -11,9 +11,34 @@ export const generateEmbedding = async (value: string): Promise<number[]> => {
   return embedding;
 };
 
-export const findRelevantContent = async (userQuery: string) => {
+export const findRelevantContent = async (
+  userQuery: string,
+  chatId: string
+) => {
   console.log('findRelevantContent: ', userQuery);
   const userQueryEmbedded = await generateEmbedding(userQuery);
+
+  const { data: resources, error: resourcesError } = await supabase
+    .from('chat_resources')
+    .select('resource_id')
+    .eq('chat_id', chatId);
+
+  if (resourcesError) {
+    console.error('Error fetching chat resources:', resourcesError);
+    throw new Error(
+      `Failed to fetch chat resources: ${resourcesError.message}`
+    );
+  }
+
+  if (!resources || resources.length === 0) {
+    console.log('No resources found for chat:', chatId);
+    return [];
+  }
+
+  const resourceIds = resources.map(
+    (resource: { resource_id: string }) => resource.resource_id
+  );
+  console.log(resourceIds);
 
   const { data: similarGuides, error } = await supabase.rpc(
     'match_embeddings',
@@ -21,6 +46,7 @@ export const findRelevantContent = async (userQuery: string) => {
       query_embedding: userQueryEmbedded,
       match_threshold: 0.6, // Similarity threshold (adjust as needed)
       match_count: 20, // Limit to 4 results
+      resource_ids: resourceIds,
     }
   );
 
@@ -39,28 +65,3 @@ export const findRelevantContent = async (userQuery: string) => {
     similarity: guide.similarity,
   }));
 };
-
-// CREATE FUNCTION match_embeddings(
-//     query_embedding VECTOR(768),
-//     match_threshold FLOAT,
-//     match_count INT
-//   )
-//   RETURNS TABLE (
-//     id UUID,
-//     content TEXT,
-//     similarity FLOAT
-//   )
-//   LANGUAGE plpgsql
-//   AS $$
-//   BEGIN
-//     RETURN QUERY
-//     SELECT
-//       e.id,
-//       e.content,
-//       1 - (e.embedding <=> query_embedding) AS similarity
-//     FROM embeddings e
-//     WHERE 1 - (e.embedding <=> query_embedding) > match_threshold
-//     ORDER BY e.embedding <=> query_embedding
-//     LIMIT match_count;
-//   END;
-//   $$;

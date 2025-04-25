@@ -1,0 +1,50 @@
+CREATE OR REPLACE FUNCTION match_embeddings(
+    query_embedding VECTOR(768),
+    match_threshold FLOAT,
+    match_count INT,
+    resource_ids UUID[]  -- New parameter for filtering by resource IDs
+)
+RETURNS TABLE (
+    id UUID,
+    content TEXT,
+    similarity FLOAT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        e.id,
+        e.content,
+        1 - (e.embedding <=> query_embedding) AS similarity
+    FROM embeddings e
+    WHERE 1 - (e.embedding <=> query_embedding) > match_threshold
+    AND e.resource_id = ANY(resource_ids)  -- Filter by the provided resource_ids
+    ORDER BY e.embedding <=> query_embedding
+    LIMIT match_count;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION increment_processed_articles(task_id_param uuid)
+RETURNS TABLE (new_processed_articles integer, is_complete boolean) AS $$
+DECLARE
+  new_count integer;
+  total_count integer;
+BEGIN
+  -- Update processed_articles atomically and get the new value
+  UPDATE tasks
+  SET processed_articles = processed_articles + 1
+  WHERE task_id = task_id_param
+  RETURNING processed_articles INTO new_count;
+
+  -- Get total_articles
+  SELECT total_articles INTO total_count
+  FROM tasks
+  WHERE task_id = task_id_param;
+
+  -- Return the new count and whether the task is complete
+  RETURN QUERY
+  SELECT new_count, (new_count >= total_count) AS is_complete;
+END;
+$$ LANGUAGE plpgsql;

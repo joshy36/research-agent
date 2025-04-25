@@ -45,7 +45,7 @@ export async function chunkAndEmbedPaper(
   paperJson: any,
   taskId: string,
   sourceUrl: string
-): Promise<void> {
+): Promise<number> {
   try {
     // Step 1: Generate section-based sentence chunks
     const chunks = generateSectionChunks(paperJson);
@@ -113,6 +113,7 @@ export async function chunkAndEmbedPaper(
     console.log(
       `Embedded ${embeddingsRecords.length} chunks for resource ${resourceId}`
     );
+    return resourceId;
   } catch (error) {
     console.error('Error in chunkAndEmbedPaper:', error);
     throw error; // Re-throw for worker to handle

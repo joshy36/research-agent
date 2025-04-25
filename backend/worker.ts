@@ -66,7 +66,12 @@ async function startWorker() {
               console.log('Articles done');
               await supabase
                 .from('tasks')
-                .update({ state: 'processPaper', articles })
+                .update({
+                  state: 'processPaper',
+                  articles,
+                  total_articles: articles.articles.length,
+                  processed_articles: 0,
+                })
                 .eq('task_id', context.taskId);
 
               for (const article of articles.articles) {
@@ -80,7 +85,6 @@ async function startWorker() {
             }
             case 'processPaper': {
               console.log('Step 3: Processing paper and embeddings...');
-              console.log('article: ', context.article);
               const paperUrl = `https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/${context.article?.pmid}/unicode`;
               const { data: existingResource, error } = await supabase
                 .from('resources')
@@ -89,32 +93,58 @@ async function startWorker() {
 
               if (error) throw error;
 
+              const { data: chat, error: chatError } = await supabase
+                .from('chats')
+                .select('id')
+                .eq('task_id', context.taskId)
+                .single();
+
+              if (chatError) throw chatError;
+
+              let resourceId = null;
+
               if (existingResource?.length > 0) {
                 console.log(`Resource already exists for URL: ${paperUrl}`);
+                resourceId = existingResource[0].id;
+              } else {
+                const response = await fetch(paperUrl);
+                if (!response.ok) {
+                  throw new Error(`Failed to fetch paper: ${response.status}`);
+                }
+                const paperJson = await response.json();
+                resourceId = await chunkAndEmbedPaper(
+                  paperJson,
+                  context.taskId,
+                  paperUrl
+                );
+              }
 
+              await supabase.from('chat_resources').insert({
+                chat_id: chat!.id,
+                resource_id: resourceId,
+              });
+
+              const { data: result, error: rpcError } = await supabase
+                .rpc('increment_processed_articles', {
+                  task_id_param: context.taskId,
+                })
+                .single();
+
+              if (rpcError) throw rpcError;
+
+              if (
+                result &&
+                typeof result === 'object' &&
+                'is_complete' in result &&
+                result.is_complete
+              ) {
                 await supabase
                   .from('tasks')
                   .update({ state: 'Complete' })
                   .eq('task_id', context.taskId);
-
-                break; // Continue to ack
+                console.log(`Task ${context.taskId} completed.`);
               }
 
-              const response = await fetch(paperUrl);
-              if (!response.ok) {
-                throw new Error(`Failed to fetch paper: ${response.status}`);
-              }
-
-              const paperJson = await response.json();
-
-              await chunkAndEmbedPaper(paperJson, context.taskId, paperUrl);
-
-              await supabase
-                .from('tasks')
-                .update({ state: 'Complete' })
-                .eq('task_id', context.taskId);
-
-              console.log('Step 3 done: Resource and embeddings stored.');
               break;
             }
 

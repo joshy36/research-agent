@@ -105,7 +105,7 @@ export default function ChatPage({
           .single();
 
         if (taskError) throw taskError;
-
+        console.log('TASKDATA: ', taskData);
         setTask(taskData);
         if (taskData) updateStepStates(taskData);
 
@@ -158,7 +158,13 @@ export default function ChatPage({
             data: articles,
           };
         }
-        if (['processPaper', 'Complete'].includes(state)) {
+        if (state === 'processPaper') {
+          newStates['Processing and embedding papers'] = {
+            status: 'loading',
+            data: null,
+          };
+        }
+        if (state === 'Complete') {
           newStates['Processing and embedding papers'] = {
             status: 'completed',
             data: null,

@@ -46,7 +46,7 @@ export async function handleChatRequest(req: Request): Promise<Response> {
     }
 
     const result = streamText({
-      model: google('gemini-1.5-pro-latest'),
+      model: google('gemini-2.0-flash-001'),
       messages,
       system: SYSTEM_PROMPT,
       tools: {
@@ -56,7 +56,8 @@ export async function handleChatRequest(req: Request): Promise<Response> {
           parameters: z.object({
             question: z.string().describe('the users question'),
           }),
-          execute: async ({ question }) => findRelevantContent(question),
+          execute: async ({ question }) =>
+            findRelevantContent(question, chatId),
         }),
       },
       onFinish: async ({ response }) => {
