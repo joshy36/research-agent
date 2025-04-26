@@ -15,7 +15,10 @@ export default function ChatLayout({
 
   useEffect(() => {
     async function fetchChatTitle() {
-      if (!params?.id) return;
+      if (!params?.id || params.id === 'chat') {
+        setTitle('');
+        return;
+      }
 
       const { data: chatData, error } = await supabase
         .from('chats')

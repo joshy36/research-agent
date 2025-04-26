@@ -64,7 +64,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <Link href="/" className="hover:bg-sidebar-accent rounded-md p-2">
+        <Link href="/chat" className="hover:bg-sidebar-accent rounded-md p-2">
           Home
         </Link>
       </SidebarHeader>

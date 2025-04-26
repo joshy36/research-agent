@@ -1,6 +1,7 @@
 import { embedMany } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { supabase } from '../supabase.js';
+import { Context } from '../types.js';
 
 export const googleProvider = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY!,
@@ -43,7 +44,7 @@ export function generateSectionChunks(
 
 export async function chunkAndEmbedPaper(
   paperJson: any,
-  taskId: string,
+  context: Context,
   sourceUrl: string
 ): Promise<number> {
   try {
@@ -58,9 +59,16 @@ export async function chunkAndEmbedPaper(
     const { data: resourceData, error: resourceError } = await supabase
       .from('resources')
       .insert({
-        task_id: taskId,
+        task_id: context.taskId,
         content: fullText,
         source_url: sourceUrl,
+        pmid: context.article?.pmid,
+        pmcid: context.article?.pmcid,
+        journal: context.article?.journal,
+        full_text_url: context.article?.fullTextUrl,
+        pub_date: context.article?.pubDate,
+        title: context.article?.title,
+        authors: context.article?.authors,
         offset: 0,
       })
       .select('id')

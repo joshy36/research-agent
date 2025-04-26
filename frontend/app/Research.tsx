@@ -44,9 +44,9 @@ export function Research() {
   return (
     <div className="flex flex-col h-full">
       <div className="max-w-3xl mx-auto flex flex-col h-full w-full px-4">
-        <div className="flex-1 overflow-y-auto custom-scrollbar pb-4">
-          <div className="space-y-6 py-8">
-            <h1 className="text-3xl font-bold text-white text-center">
+        <div className="flex-1 flex-col items-center justify-center">
+          <div className="pt-64 py-8">
+            <h1 className="text-3xl font-bold text-white text-center pb-6">
               What would you like to research?
             </h1>
 

@@ -68,7 +68,6 @@ async function startWorker() {
                 .from('tasks')
                 .update({
                   state: 'processPaper',
-                  articles,
                   total_articles: articles.articles.length,
                   processed_articles: 0,
                 })
@@ -114,7 +113,7 @@ async function startWorker() {
                 const paperJson = await response.json();
                 resourceId = await chunkAndEmbedPaper(
                   paperJson,
-                  context.taskId,
+                  context,
                   paperUrl
                 );
               }

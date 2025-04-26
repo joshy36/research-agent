@@ -3,8 +3,14 @@
 import { supabase } from '@/providers/supabase';
 import { useChat } from '@ai-sdk/react';
 import { UIMessage } from 'ai';
-import { CheckCircle2, ChevronDown, Loader2, XCircle } from 'lucide-react';
-import { use, useEffect, useRef, useState } from 'react';
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  XCircle,
+} from 'lucide-react';
+import React, { use, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -32,20 +38,25 @@ export default function ChatPage({
     message: string;
     state: string;
     parsed_query?: { keyTerms: string[]; rawTerms: string[] };
-    articles?: {
-      articles: Array<{
-        pmid: string;
-        pmcid: string;
-        title: string;
-        authors: string[];
-        journal: string;
-        pubDate: string;
-        fullTextUrl: string;
-      }>;
-    };
     updated_at: string;
     user_id: string;
     created_at: string;
+    total_articles?: number;
+    processed_articles?: number;
+    chats?: Array<{
+      chat_resources: Array<{
+        resources: {
+          pmid: number;
+          pmcid: number;
+          title: string;
+          authors: string[];
+          journal: string;
+          pub_date: string;
+          source_url: string;
+          full_text_url: string;
+        };
+      }>;
+    }>;
   } | null>(null);
   const [title, setTitle] = useState('');
   const {
@@ -100,7 +111,18 @@ export default function ChatPage({
 
         const { data: taskData, error: taskError } = await supabase
           .from('tasks')
-          .select('*')
+          .select(
+            `
+            *,
+            chats!inner (
+              chat_resources (
+                resources (
+                  authors, full_text_url, journal, pmcid, pmid, pub_date, source_url, title
+                )
+              )
+            )
+          `,
+          )
           .eq('task_id', chatData.task_id)
           .single();
 
@@ -133,7 +155,7 @@ export default function ChatPage({
   }, [params.id, setMessages]);
 
   const updateStepStates = (data: any) => {
-    const { state, parsed_query, articles } = data;
+    const { state, parsed_query, chats } = data;
     const stepName = stateToStep[state];
     if (stepName) {
       setStepStates((prev) => {
@@ -155,7 +177,7 @@ export default function ChatPage({
         if (['fetchMetadata', 'processPaper', 'Complete'].includes(state)) {
           newStates['Fetching relevant articles'] = {
             status: 'completed',
-            data: articles,
+            data: chats?.[0]?.chat_resources || [],
           };
         }
         if (state === 'processPaper') {
@@ -219,99 +241,178 @@ export default function ChatPage({
       <div className="max-w-3xl mx-auto flex flex-col h-full w-full">
         {/* Scrollable content area with padding for the fixed input */}
         <div className="flex-1 overflow-y-auto custom-scrollbar pb-4">
-          {/* Task Progress Section */}
-          <div className="mb-6 px-4">
-            <h3 className="mb-3 text-sm font-semibold text-gray-300 uppercase tracking-wide">
-              Task Progress
-            </h3>
-            <div className="relative pl-6">
-              <div className="absolute top-0 bottom-0 left-[5px] w-0.25 bg-gray-700" />
-              {steps.map((step) => (
-                <div key={step} className="relative mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center">
-                      {stepStates[step]?.status === 'loading' && (
-                        <Loader2 className="w-3 h-3 text-gray-400 animate-spin" />
-                      )}
-                      {stepStates[step]?.status === 'completed' && (
-                        <CheckCircle2 className="w-3 h-3 text-green-500" />
-                      )}
-                      {stepStates[step]?.status === 'error' && (
-                        <XCircle className="w-3 h-3 text-red-500" />
-                      )}
-                    </div>
-                    <div className="flex items-center">
-                      <div className="absolute left-[-22.5px] w-2 h-2 rounded-full bg-gray-800 border border-gray-700 z-10" />
-                      <button
-                        onClick={() =>
-                          setActiveStep(activeStep === step ? null : step)
-                        }
-                        className="text-sm text-gray-200 hover:text-gray-400 transition-colors flex items-center cursor-pointer"
-                      >
-                        {step}
-                        <ChevronDown
-                          className={`w-4 h-4 ml-2 transition-transform duration-200 ${
-                            activeStep === step ? 'rotate-180' : ''
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                  {activeStep === step && stepStates[step]?.data && (
-                    <div className="mt-2 p-3 bg-zinc-900 rounded-md text-xs text-gray-400 border border-zinc-800">
-                      <pre className="whitespace-pre-wrap">
-                        {JSON.stringify(stepStates[step].data, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                  {activeStep === step &&
-                    stepStates[step]?.status === 'error' && (
-                      <div className="mt-2 p-3 bg-red-950 rounded-md text-xs text-red-400 border border-red-900">
-                        Error: {subscriptionError || 'Step failed to complete'}
-                      </div>
-                    )}
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Messages Section */}
           <div className="space-y-4 px-4 flex-1">
-            {convertToUIMessages(messages).map((m) => (
-              <div
-                key={m.id}
-                className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
+            {convertToUIMessages(messages).map((m, index) => (
+              <React.Fragment key={m.id}>
                 <div
-                  className={`${
-                    m.role === 'user'
-                      ? 'bg-zinc-800 border border-zinc-400/10 text-white p-3 rounded-2xl max-w-[90%] shadow-sm'
-                      : 'text-white p-3 rounded-2xl max-w-[100%] shadow-sm'
-                  } whitespace-pre-wrap`}
+                  className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  {m.role === 'user'
-                    ? // Render user messages as plain text
-                      m.parts.map((part, index) => (
-                        // @ts-ignore
-                        <p key={index}>{part.text}</p>
-                      ))
-                    : // Render assistant messages with Markdown
-                      m.parts.map((part, index) => (
-                        // @ts-ignore
-                        <ReactMarkdown
-                          key={index}
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeRaw]}
-                          // className="prose prose-invert max-w-none"
-                        >
-                          {
-                            //@ts-ignore
-                            part.text
-                          }
-                        </ReactMarkdown>
-                      ))}
+                  <div
+                    className={`${
+                      m.role === 'user'
+                        ? 'bg-zinc-800 border border-zinc-400/10 text-white p-3 rounded-2xl max-w-[90%] shadow-sm'
+                        : 'text-white p-3 rounded-2xl max-w-[100%] shadow-sm'
+                    } whitespace-pre-wrap`}
+                  >
+                    {m.role === 'user'
+                      ? // Render user messages as plain text
+                        m.parts.map((part, index) => (
+                          // @ts-ignore
+                          <p key={index}>{part.text}</p>
+                        ))
+                      : // Render assistant messages with Markdown
+                        m.parts.map((part, index) => (
+                          // @ts-ignore
+                          <ReactMarkdown
+                            key={index}
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeRaw]}
+                            // className="prose prose-invert max-w-none"
+                          >
+                            {
+                              //@ts-ignore
+                              part.text
+                            }
+                          </ReactMarkdown>
+                        ))}
+                  </div>
                 </div>
-              </div>
+                {/* Show task progress after first user message */}
+                {m.role === 'user' && index === 0 && (
+                  <div className="mb-6 px-4">
+                    <h3 className="mb-3 text-sm font-semibold text-gray-300 uppercase tracking-wide">
+                      Research Progress
+                    </h3>
+                    <div className="relative pl-6">
+                      <div className="absolute top-0 bottom-0 left-[5px] w-0.25 bg-gray-700" />
+                      {steps.map((step) => (
+                        <div key={step} className="relative mb-4">
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center">
+                              {stepStates[step]?.status === 'loading' && (
+                                <Loader2 className="w-3 h-3 text-gray-400 animate-spin" />
+                              )}
+                              {stepStates[step]?.status === 'completed' && (
+                                <CheckCircle2 className="w-3 h-3 text-green-500" />
+                              )}
+                              {stepStates[step]?.status === 'error' && (
+                                <XCircle className="w-3 h-3 text-red-500" />
+                              )}
+                            </div>
+                            <div className="flex items-center">
+                              <div className="absolute left-[-22.5px] w-2 h-2 rounded-full bg-gray-800 border border-gray-700 z-10" />
+                              <button
+                                onClick={() =>
+                                  setActiveStep(
+                                    activeStep === step ? null : step,
+                                  )
+                                }
+                                className="text-sm text-gray-200 hover:text-gray-400 transition-colors flex items-center cursor-pointer"
+                              >
+                                {step}
+                                <div className="relative w-4 h-4 ml-2">
+                                  <ChevronRight
+                                    className={`absolute w-4 h-4 transition-all duration-200 ${
+                                      activeStep === step
+                                        ? 'rotate-90 opacity-0'
+                                        : 'rotate-0 opacity-100'
+                                    }`}
+                                  />
+                                  <ChevronDown
+                                    className={`absolute w-4 h-4 transition-all duration-200 ${
+                                      activeStep === step
+                                        ? 'rotate-0 opacity-100'
+                                        : '-rotate-90 opacity-0'
+                                    }`}
+                                  />
+                                </div>
+                              </button>
+                            </div>
+                          </div>
+                          {activeStep === step && stepStates[step]?.data && (
+                            <div className="mt-2 p-3 bg-zinc-900 rounded-md text-xs text-gray-400 border border-zinc-800">
+                              {step === 'Extracting key terms' &&
+                                stepStates[step]?.data?.keyTerms && (
+                                  <div className="space-y-2">
+                                    <div className="font-medium text-gray-300">
+                                      Key Terms:
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                      {stepStates[step].data.keyTerms.map(
+                                        (term: string, index: number) => (
+                                          <span
+                                            key={index}
+                                            className="px-2 py-1 bg-zinc-800 rounded-md"
+                                          >
+                                            {term}
+                                          </span>
+                                        ),
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              {step === 'Fetching relevant articles' &&
+                                stepStates[step]?.data && (
+                                  <div className="space-y-4">
+                                    {stepStates[step].data.map(
+                                      (resource: any, index: number) => (
+                                        <div
+                                          key={index}
+                                          className="border-b border-zinc-800 last:border-b-0 pb-4 last:pb-0"
+                                        >
+                                          <div className="font-medium text-gray-300 mb-1">
+                                            {resource.resources.title}
+                                          </div>
+                                          <div className="text-gray-400 text-xs mb-1">
+                                            {resource.resources.authors.join(
+                                              ', ',
+                                            )}
+                                          </div>
+                                          <div className="text-gray-400 text-xs mb-1">
+                                            {resource.resources.journal} •{' '}
+                                            {resource.resources.pub_date}
+                                          </div>
+                                          <a
+                                            href={
+                                              resource.resources.full_text_url
+                                            }
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-400 hover:text-blue-300 text-xs"
+                                          >
+                                            View Full Text
+                                          </a>
+                                        </div>
+                                      ),
+                                    )}
+                                  </div>
+                                )}
+                              {step === 'Processing and embedding papers' && (
+                                <div className="text-gray-400">
+                                  Processing{' '}
+                                  {stepStates[step]?.data?.processed_articles ||
+                                    0}{' '}
+                                  of{' '}
+                                  {stepStates[step]?.data?.total_articles || 0}{' '}
+                                  articles...
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {activeStep === step &&
+                            stepStates[step]?.status === 'error' && (
+                              <div className="mt-2 p-3 bg-red-950 rounded-md text-xs text-red-400 border border-red-900">
+                                Error:{' '}
+                                {subscriptionError || 'Step failed to complete'}
+                              </div>
+                            )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </React.Fragment>
             ))}
             <div ref={messagesEndRef} />
           </div>
