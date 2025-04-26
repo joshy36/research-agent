@@ -2,12 +2,20 @@ CREATE OR REPLACE FUNCTION match_embeddings(
     query_embedding VECTOR(768),
     match_threshold FLOAT,
     match_count INT,
-    resource_ids UUID[]  -- New parameter for filtering by resource IDs
+    resource_ids UUID[]
 )
 RETURNS TABLE (
     id UUID,
     content TEXT,
-    similarity FLOAT
+    similarity FLOAT,
+    resource_id UUID,
+    resource_title TEXT,
+    pmid BIGINT,
+    pmcid BIGINT,
+    journal TEXT,
+    full_text_url TEXT,
+    pub_date TEXT,
+    authors TEXT[]
 )
 LANGUAGE plpgsql
 AS $$
@@ -16,10 +24,19 @@ BEGIN
     SELECT
         e.id,
         e.content,
-        1 - (e.embedding <=> query_embedding) AS similarity
+        1 - (e.embedding <=> query_embedding) AS similarity,
+        r.id AS resource_id,
+        r.title AS resource_title,
+        r.pmid,
+        r.pmcid,
+        r.journal,
+        r.full_text_url,
+        r.pub_date,
+        r.authors
     FROM embeddings e
+    JOIN resources r ON e.resource_id = r.id
     WHERE 1 - (e.embedding <=> query_embedding) > match_threshold
-    AND e.resource_id = ANY(resource_ids)  -- Filter by the provided resource_ids
+    AND e.resource_id = ANY(resource_ids)
     ORDER BY e.embedding <=> query_embedding
     LIMIT match_count;
 END;

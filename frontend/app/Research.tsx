@@ -69,7 +69,7 @@ export function Research() {
                 <button
                   type="submit"
                   disabled={!input.trim()}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md cursor-pointer p-2 text-zinc-400 hover:text-white hover:bg-zinc-700/50 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors border border-zinc-700/50"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md cursor-pointer p-2 text-zinc-400 hover:text-white hover:bg-zinc-700/50 disabled:opacity-30 disabled:hover:text-zinc-400 disabled:hover:bg-transparent disabled:cursor-auto transition-colors border border-zinc-700/50"
                 >
                   <Search className="h-5 w-5" />
                 </button>
@@ -83,7 +83,7 @@ export function Research() {
                       'What are the effects of magnesium on sleep?',
                     )
                   }
-                  className="cursor-pointer rounded-lg bg-zinc-800/80 backdrop-blur-sm p-3 text-sm text-zinc-300 transition-colors hover:bg-zinc-700/50 disabled:cursor-not-allowed disabled:bg-zinc-600/30 disabled:text-zinc-500"
+                  className="cursor-pointer rounded-lg bg-zinc-800/80 backdrop-blur-sm p-3 text-sm text-zinc-300 transition-colors hover:bg-zinc-700/50 disabled:cursor-auto disabled:bg-zinc-600/30 disabled:text-zinc-500"
                 >
                   What are the effects of magnesium on sleep?
                 </button>
@@ -94,7 +94,7 @@ export function Research() {
                       'How does exercise impact mental health?',
                     )
                   }
-                  className="cursor-pointer rounded-lg bg-zinc-800/80 backdrop-blur-sm p-3 text-sm text-zinc-300 transition-colors hover:bg-zinc-700/50 disabled:cursor-not-allowed disabled:bg-zinc-600/30 disabled:text-zinc-500"
+                  className="cursor-pointer rounded-lg bg-zinc-800/80 backdrop-blur-sm p-3 text-sm text-zinc-300 transition-colors hover:bg-zinc-700/50 disabled:cursor-auto disabled:bg-zinc-600/30 disabled:text-zinc-500"
                 >
                   How does exercise impact mental health?
                 </button>
@@ -105,7 +105,7 @@ export function Research() {
                       'What is the role of gut microbiome in immunity?',
                     )
                   }
-                  className="cursor-pointer rounded-lg bg-zinc-800/80 backdrop-blur-sm p-3 text-sm text-zinc-300 transition-colors hover:bg-zinc-700/50 disabled:cursor-not-allowed disabled:bg-zinc-600/30 disabled:text-zinc-500"
+                  className="cursor-pointer rounded-lg bg-zinc-800/80 backdrop-blur-sm p-3 text-sm text-zinc-300 transition-colors hover:bg-zinc-700/50 disabled:cursor-auto disabled:bg-zinc-600/30 disabled:text-zinc-500"
                 >
                   What is the role of gut microbiome in immunity?
                 </button>

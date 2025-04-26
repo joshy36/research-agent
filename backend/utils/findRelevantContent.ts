@@ -38,30 +38,20 @@ export const findRelevantContent = async (
   const resourceIds = resources.map(
     (resource: { resource_id: string }) => resource.resource_id
   );
-  console.log(resourceIds);
 
   const { data: similarGuides, error } = await supabase.rpc(
     'match_embeddings',
     {
       query_embedding: userQueryEmbedded,
-      match_threshold: 0.6, // Similarity threshold (adjust as needed)
-      match_count: 20, // Limit to 4 results
+      match_threshold: 0.6,
+      match_count: 10,
       resource_ids: resourceIds,
     }
   );
 
-  console.log('similar: ', similarGuides);
+  console.log('SIMILAR');
+  console.log(similarGuides);
   console.log('error: ', error);
 
-  const test = similarGuides.map((guide: any) => ({
-    name: guide.content,
-    similarity: guide.similarity,
-  }));
-
-  console.log('test: ', test);
-
-  return similarGuides.map((guide: any) => ({
-    name: guide.content,
-    similarity: guide.similarity,
-  }));
+  return similarGuides;
 };

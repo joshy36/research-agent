@@ -1,5 +1,7 @@
 'use client';
 
+import { References } from '@/components/references';
+import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/providers/supabase';
 import { useChat } from '@ai-sdk/react';
 import { UIMessage } from 'ai';
@@ -127,7 +129,7 @@ export default function ChatPage({
           .single();
 
         if (taskError) throw taskError;
-        console.log('TASKDATA: ', taskData);
+        console.log('Initial TASKDATA: ', taskData);
         setTask(taskData);
         if (taskData) updateStepStates(taskData);
 
@@ -155,7 +157,8 @@ export default function ChatPage({
   }, [params.id, setMessages]);
 
   const updateStepStates = (data: any) => {
-    const { state, parsed_query, chats } = data;
+    const { state, parsed_query, chats, processed_articles, total_articles } =
+      data;
     const stepName = stateToStep[state];
     if (stepName) {
       setStepStates((prev) => {
@@ -183,13 +186,19 @@ export default function ChatPage({
         if (state === 'processPaper') {
           newStates['Processing and embedding papers'] = {
             status: 'loading',
-            data: null,
+            data: {
+              processed_articles: processed_articles || 0,
+              total_articles: total_articles || 0,
+            },
           };
         }
         if (state === 'Complete') {
           newStates['Processing and embedding papers'] = {
             status: 'completed',
-            data: null,
+            data: {
+              processed_articles: processed_articles || 0,
+              total_articles: total_articles || 0,
+            },
           };
         }
         return newStates;
@@ -197,7 +206,7 @@ export default function ChatPage({
     }
   };
 
-  // Subscribe to task updates
+  // Subscribe to task updates and chat resources
   useEffect(() => {
     if (!task?.task_id) return;
 
@@ -211,18 +220,86 @@ export default function ChatPage({
           table: 'tasks',
           filter: `task_id=eq.${task.task_id}`,
         },
-        (payload: { new: any }) => {
-          console.log('Task updated:', payload.new);
-          setTask(payload.new);
-          updateStepStates(payload.new);
+        async (payload: { new: any }) => {
+          // Fetch the full task data with resources when task is updated
+          const { data: updatedTask, error } = await supabase
+            .from('tasks')
+            .select(
+              `
+              *,
+              chats!inner (
+                chat_resources (
+                  resources (
+                    authors, full_text_url, journal, pmcid, pmid, pub_date, source_url, title
+                  )
+                )
+              )
+            `,
+            )
+            .eq('task_id', task.task_id)
+            .single();
+
+          if (error) {
+            console.error('Error fetching updated task:', error);
+            return;
+          }
+
+          if (updatedTask) {
+            setTask(updatedTask);
+            updateStepStates(updatedTask);
+          }
+        },
+      )
+      .subscribe();
+
+    // Subscribe to chat_resources updates
+    const chatResourcesChannel = supabase
+      .channel('chat-resources-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'chat_resources',
+          filter: `chat_id=eq.${params.id}`,
+        },
+        async () => {
+          // Fetch updated task with resources
+          const { data: updatedTask, error } = await supabase
+            .from('tasks')
+            .select(
+              `
+              *,
+              chats!inner (
+                chat_resources (
+                  resources (
+                    authors, full_text_url, journal, pmcid, pmid, pub_date, source_url, title
+                  )
+                )
+              )
+            `,
+            )
+            .eq('task_id', task.task_id)
+            .single();
+
+          if (error) {
+            console.error('Error fetching updated chat resources:', error);
+            return;
+          }
+
+          if (updatedTask) {
+            setTask(updatedTask);
+            updateStepStates(updatedTask);
+          }
         },
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(chatResourcesChannel);
     };
-  }, [task?.task_id]);
+  }, [task?.task_id, params.id]);
 
   function convertToUIMessages(messages: Array<any>): Array<UIMessage> {
     return messages.map((message) => ({
@@ -233,6 +310,43 @@ export default function ChatPage({
       content: '',
       createdAt: message.createdAt,
     }));
+  }
+
+  function parseReferences(text: string) {
+    const references: Array<{
+      authors: string;
+      title: string;
+      journal: string;
+      year: string;
+      pmid: string;
+    }> = [];
+
+    // Match references in the format [1] Author et al., Title, Journal (Year). PMID: XXXXXX
+    const refRegex =
+      /\[(\d+)\]\s*([^,]+),\s*([^,]+),\s*([^(]+)\s*\((\d{4})\)\.\s*PMID:\s*(\d+)/g;
+    let match;
+
+    while ((match = refRegex.exec(text)) !== null) {
+      references.push({
+        authors: match[2].trim(),
+        title: match[3].trim(),
+        journal: match[4].trim(),
+        year: match[5],
+        pmid: match[6],
+      });
+    }
+
+    return references;
+  }
+
+  function splitMessageAndReferences(text: string) {
+    const refIndex = text.indexOf('\n\nReferences:');
+    if (refIndex === -1) return { message: text, references: [] };
+
+    const message = text.substring(0, refIndex).trim();
+    const references = parseReferences(text.substring(refIndex));
+
+    return { message, references };
   }
 
   return (
@@ -262,20 +376,24 @@ export default function ChatPage({
                           <p key={index}>{part.text}</p>
                         ))
                       : // Render assistant messages with Markdown
-                        m.parts.map((part, index) => (
-                          // @ts-ignore
-                          <ReactMarkdown
-                            key={index}
-                            remarkPlugins={[remarkGfm]}
-                            rehypePlugins={[rehypeRaw]}
-                            // className="prose prose-invert max-w-none"
-                          >
-                            {
-                              //@ts-ignore
-                              part.text
-                            }
-                          </ReactMarkdown>
-                        ))}
+                        m.parts.map((part, index) => {
+                          if (part.type !== 'text') return null;
+                          const { message, references } =
+                            splitMessageAndReferences(part.text);
+                          return (
+                            <div key={index}>
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw]}
+                              >
+                                {message}
+                              </ReactMarkdown>
+                              {references.length > 0 && (
+                                <References references={references} />
+                              )}
+                            </div>
+                          );
+                        })}
                   </div>
                 </div>
                 {/* Show task progress after first user message */}
@@ -302,32 +420,66 @@ export default function ChatPage({
                             </div>
                             <div className="flex items-center">
                               <div className="absolute left-[-22.5px] w-2 h-2 rounded-full bg-gray-800 border border-gray-700 z-10" />
-                              <button
-                                onClick={() =>
-                                  setActiveStep(
-                                    activeStep === step ? null : step,
-                                  )
-                                }
-                                className="text-sm text-gray-200 hover:text-gray-400 transition-colors flex items-center cursor-pointer"
-                              >
-                                {step}
-                                <div className="relative w-4 h-4 ml-2">
-                                  <ChevronRight
-                                    className={`absolute w-4 h-4 transition-all duration-200 ${
-                                      activeStep === step
-                                        ? 'rotate-90 opacity-0'
-                                        : 'rotate-0 opacity-100'
-                                    }`}
-                                  />
-                                  <ChevronDown
-                                    className={`absolute w-4 h-4 transition-all duration-200 ${
-                                      activeStep === step
-                                        ? 'rotate-0 opacity-100'
-                                        : '-rotate-90 opacity-0'
-                                    }`}
-                                  />
+                              {step === 'Processing and embedding papers' ? (
+                                <div className="flex flex-col">
+                                  <span className="text-sm text-gray-200">
+                                    {step}
+                                  </span>
+                                  <div
+                                    className={`overflow-hidden transition-all duration-300 ease-in-out ${task?.state === 'processPaper' ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'}`}
+                                  >
+                                    <div className="flex flex-col gap-1">
+                                      <div className="flex items-center justify-between text-xs text-gray-400">
+                                        <span>Processing articles...</span>
+                                        <span className="text-gray-300">
+                                          {stepStates[step]?.data
+                                            ?.processed_articles || 0}{' '}
+                                          /{' '}
+                                          {stepStates[step]?.data
+                                            ?.total_articles || 0}
+                                        </span>
+                                      </div>
+                                      <Progress
+                                        value={
+                                          ((stepStates[step]?.data
+                                            ?.processed_articles || 0) /
+                                            (stepStates[step]?.data
+                                              ?.total_articles || 1)) *
+                                          100
+                                        }
+                                        className="h-2 w-full bg-zinc-800"
+                                      />
+                                    </div>
+                                  </div>
                                 </div>
-                              </button>
+                              ) : (
+                                <button
+                                  onClick={() =>
+                                    setActiveStep(
+                                      activeStep === step ? null : step,
+                                    )
+                                  }
+                                  className="text-sm text-gray-200 hover:text-gray-400 transition-colors flex items-center cursor-pointer"
+                                >
+                                  {step}
+                                  <div className="relative w-4 h-4 ml-2">
+                                    <ChevronRight
+                                      className={`absolute w-4 h-4 transition-all duration-200 ${
+                                        activeStep === step
+                                          ? 'rotate-90 opacity-0'
+                                          : 'rotate-0 opacity-100'
+                                      }`}
+                                    />
+                                    <ChevronDown
+                                      className={`absolute w-4 h-4 transition-all duration-200 ${
+                                        activeStep === step
+                                          ? 'rotate-0 opacity-100'
+                                          : '-rotate-90 opacity-0'
+                                      }`}
+                                    />
+                                  </div>
+                                </button>
+                              )}
                             </div>
                           </div>
                           {activeStep === step && stepStates[step]?.data && (
@@ -389,13 +541,27 @@ export default function ChatPage({
                                   </div>
                                 )}
                               {step === 'Processing and embedding papers' && (
-                                <div className="text-gray-400">
-                                  Processing{' '}
-                                  {stepStates[step]?.data?.processed_articles ||
-                                    0}{' '}
-                                  of{' '}
-                                  {stepStates[step]?.data?.total_articles || 0}{' '}
-                                  articles...
+                                <div className="text-gray-400 space-y-2">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span>Processing articles...</span>
+                                    <span className="text-gray-300">
+                                      {stepStates[step]?.data
+                                        ?.processed_articles || 0}{' '}
+                                      /{' '}
+                                      {stepStates[step]?.data?.total_articles ||
+                                        0}
+                                    </span>
+                                  </div>
+                                  <Progress
+                                    value={
+                                      ((stepStates[step]?.data
+                                        ?.processed_articles || 0) /
+                                        (stepStates[step]?.data
+                                          ?.total_articles || 1)) *
+                                      100
+                                    }
+                                    className="h-2 bg-zinc-800"
+                                  />
                                 </div>
                               )}
                             </div>
@@ -448,7 +614,7 @@ export default function ChatPage({
                 <button
                   type="submit"
                   disabled={loading || !input.trim()}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md cursor-pointer p-2 text-zinc-400 hover:text-white hover:bg-zinc-700/50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors border border-zinc-700/50"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-zinc-400 hover:text-white hover:bg-zinc-700/50 disabled:opacity-30 disabled:hover:text-zinc-400 disabled:hover:bg-transparent disabled:cursor-auto transition-colors border border-zinc-700/50"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
