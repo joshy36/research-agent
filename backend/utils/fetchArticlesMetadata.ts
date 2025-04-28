@@ -17,7 +17,23 @@ export const fetchArticlesMetadata = async (context: Context) => {
   }
   const searchData: any = await searchResponse.json();
 
-  const pmcids = searchData.esearchresult?.idlist || [];
+  let pmcids = searchData.esearchresult?.idlist || [];
+
+  // If no results with AND, try OR search
+  if (!pmcids.length && keyTerms?.length) {
+    console.log('No results with AND search, trying OR search');
+    const orQuery = keyTerms.map((term) => `${term}[mesh]`).join(' OR ');
+    const orSearchUrl = `${baseUrl}esearch.fcgi?db=pmc&term=${encodeURIComponent(
+      orQuery
+    )}&retmax=5&retmode=json`;
+
+    const orSearchResponse = await fetch(orSearchUrl);
+    if (orSearchResponse.ok) {
+      const orSearchData: any = await orSearchResponse.json();
+      pmcids = orSearchData.esearchresult?.idlist || [];
+    }
+  }
+
   if (!pmcids.length) {
     console.log('No PMCIDs found for query:', query);
     return { articles: [] };

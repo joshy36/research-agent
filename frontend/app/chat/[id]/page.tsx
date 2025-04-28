@@ -60,7 +60,7 @@ export default function ChatPage({
       }>;
     }>;
   } | null>(null);
-  const [title, setTitle] = useState('');
+
   const {
     messages,
     setMessages,
@@ -74,6 +74,7 @@ export default function ChatPage({
     body: { chatId: params.id },
   });
   const messagesEndRef = useRef<HTMLDivElement>(null); // From step 1
+  const hasLoggedProcessedArticlesRef = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -108,8 +109,6 @@ export default function ChatPage({
 
         if (chatError) throw chatError;
         if (!chatData?.task_id) throw new Error('No task found for this chat');
-
-        setTitle(chatData.title);
 
         const { data: taskData, error: taskError } = await supabase
           .from('tasks')
@@ -359,43 +358,60 @@ export default function ChatPage({
           <div className="space-y-4 px-4 flex-1">
             {convertToUIMessages(messages).map((m, index) => (
               <React.Fragment key={m.id}>
-                <div
-                  className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`${
-                      m.role === 'user'
-                        ? 'bg-zinc-800 border border-zinc-400/10 text-white p-3 rounded-2xl max-w-[90%] shadow-sm'
-                        : 'text-white p-3 rounded-2xl max-w-[100%] shadow-sm'
-                    } whitespace-pre-wrap`}
-                  >
-                    {m.role === 'user'
-                      ? // Render user messages as plain text
-                        m.parts.map((part, index) => (
-                          // @ts-ignore
-                          <p key={index}>{part.text}</p>
-                        ))
-                      : // Render assistant messages with Markdown
-                        m.parts.map((part, index) => {
-                          if (part.type !== 'text') return null;
-                          const { message, references } =
-                            splitMessageAndReferences(part.text);
-                          return (
-                            <div key={index}>
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                rehypePlugins={[rehypeRaw]}
-                              >
-                                {message}
-                              </ReactMarkdown>
-                              {references.length > 0 && (
-                                <References references={references} />
-                              )}
-                            </div>
-                          );
-                        })}
+                {m.role === 'user' && index === 0 ? (
+                  <div className="mb-6 px-4">
+                    <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-2">
+                      Initial Query
+                    </h3>
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+                      {m.parts.map((part, partIndex) =>
+                        part.type === 'text' ? (
+                          <p key={partIndex} className="text-gray-200">
+                            {part.text}
+                          </p>
+                        ) : null,
+                      )}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div
+                    className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`${
+                        m.role === 'user'
+                          ? 'bg-zinc-800 border border-zinc-400/10 text-white p-3 rounded-2xl max-w-[90%] shadow-sm'
+                          : 'text-white p-3 rounded-2xl max-w-[100%] shadow-sm'
+                      } whitespace-pre-wrap`}
+                    >
+                      {m.role === 'user'
+                        ? // Render user messages as plain text
+                          m.parts.map((part, index) => (
+                            // @ts-ignore
+                            <p key={index}>{part.text}</p>
+                          ))
+                        : // Render assistant messages with Markdown
+                          m.parts.map((part, index) => {
+                            if (part.type !== 'text') return null;
+                            const { message, references } =
+                              splitMessageAndReferences(part.text);
+                            return (
+                              <div key={index}>
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  rehypePlugins={[rehypeRaw]}
+                                >
+                                  {message}
+                                </ReactMarkdown>
+                                {references.length > 0 && (
+                                  <References references={references} />
+                                )}
+                              </div>
+                            );
+                          })}
+                    </div>
+                  </div>
+                )}
                 {/* Show task progress after first user message */}
                 {m.role === 'user' && index === 0 && (
                   <div className="mb-6 px-4">
@@ -575,6 +591,23 @@ export default function ChatPage({
                             )}
                         </div>
                       ))}
+                      {Object.values(stepStates).every(
+                        (state) => state.status === 'completed',
+                      ) && (
+                        <div className="mt-4 p-4 bg-green-900/20 border border-green-800/50 rounded-lg">
+                          <div className="flex items-center gap-2 text-green-400">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span className="font-medium">
+                              Research Complete
+                            </span>
+                          </div>
+                          <p className="mt-2 text-sm text-gray-300">
+                            Your research materials are ready! You can now ask
+                            questions about the papers, request summaries, or
+                            explore specific topics in detail.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -600,7 +633,7 @@ export default function ChatPage({
                           : 'bg-red-500'
                   }`}
                 />
-                <span className="capitalize">{status} - Gemini 1.5 Pro</span>
+                <span className="capitalize">{status} - Gemini 2.5 Pro</span>
               </div>
               <div className="relative">
                 <input

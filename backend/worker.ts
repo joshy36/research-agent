@@ -10,6 +10,7 @@ import { supabase } from './supabase.js';
 import { sendToQueue } from './rabbitmq.js';
 import { fetchArticlesMetadata } from './utils/fetchArticlesMetadata.js';
 import { chunkAndEmbedPaper } from './utils/generateEmbedding.js';
+import { toMeshHeading } from './utils/toMeshHeading.js';
 
 const QUEUE_NAME = 'task_queue';
 const RABBITMQ_URL = 'amqp://localhost:5672';
@@ -43,6 +44,16 @@ async function startWorker() {
                 }),
                 prompt: 'User query: ' + context.message + ' ' + prompt,
               });
+
+              const updatedKeyTerms: string[] = [];
+              for (const term of object.parsedQuery.keyTerms) {
+                const meshHeadings = await toMeshHeading(term);
+                console.log(`MeSH headings for "${term}":`, meshHeadings);
+                if (meshHeadings.length > 0) {
+                  updatedKeyTerms.push(meshHeadings[0]!);
+                }
+              }
+              object.parsedQuery.keyTerms = updatedKeyTerms;
 
               await supabase
                 .from('tasks')
