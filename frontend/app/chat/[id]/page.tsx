@@ -345,7 +345,16 @@ export default function ChatPage({
     const message = text.substring(0, refIndex).trim();
     const references = parseReferences(text.substring(refIndex));
 
-    return { message, references };
+    // Deduplicate references based on PMID
+    const uniqueReferences = references.reduce((acc: any[], current) => {
+      const exists = acc.find((item) => item.pmid === current.pmid);
+      if (!exists) {
+        acc.push(current);
+      }
+      return acc;
+    }, []);
+
+    return { message, references: uniqueReferences };
   }
 
   return (
