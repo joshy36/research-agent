@@ -62,7 +62,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
         <Link href="/chat" className="hover:bg-sidebar-accent rounded-md p-2">
           Home
