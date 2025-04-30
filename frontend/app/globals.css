@@ -139,3 +139,8 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #4b5563 #0a0a0a;
 }
+
+.custom-scrollbar-sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 #171717;
+}

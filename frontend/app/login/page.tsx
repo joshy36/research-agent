@@ -12,18 +12,18 @@ import { login, signup } from './actions';
 
 export default function LoginPage() {
   return (
-    <div className={'flex flex-row gap-6 dark justify-center'}>
-      <Card className="bg-slate-900 border-slate-800 w-1/2">
+    <div className="flex min-h-screen items-center justify-center bg-zinc-900 p-4">
+      <Card className="w-full max-w-md bg-zinc-800/80 backdrop-blur-sm border-zinc-700">
         <CardHeader>
-          <CardTitle className="text-2xl text-white">Login</CardTitle>
-          <CardDescription className="text-slate-400">
-            Enter your email below to login to your account
+          <CardTitle className="text-2xl text-white">Welcome Back</CardTitle>
+          <CardDescription className="text-zinc-400">
+            Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="flex flex-col gap-6">
+          <form className="flex flex-col gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="email" className="text-slate-200">
+              <Label htmlFor="email" className="text-zinc-200">
                 Email
               </Label>
               <Input
@@ -32,12 +32,12 @@ export default function LoginPage() {
                 type="email"
                 placeholder="m@example.com"
                 required
-                className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                className="bg-zinc-900/50 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-zinc-600"
               />
             </div>
             <div className="grid gap-2">
               <div className="flex items-center">
-                <Label htmlFor="password" className="text-slate-200">
+                <Label htmlFor="password" className="text-zinc-200">
                   Password
                 </Label>
               </div>
@@ -46,19 +46,19 @@ export default function LoginPage() {
                 name="password"
                 type="password"
                 required
-                className="bg-slate-800 border-slate-700 text-white"
+                className="bg-zinc-900/50 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-zinc-600"
               />
             </div>
             <Button
               formAction={login}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              className="cursor-pointer w-full bg-white text-black"
             >
               Log in
             </Button>
             <Button
               formAction={signup}
               variant="outline"
-              className="w-full border-slate-700 text-slate-200 hover:bg-slate-800"
+              className="cursor-pointer w-full border-zinc-700 text-zinc-200 hover:bg-zinc-700/50"
             >
               Sign up
             </Button>

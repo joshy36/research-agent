@@ -74,7 +74,7 @@ export async function handleChatRequest(req: Request): Promise<Response> {
     }
 
     const result = streamText({
-      model: google('gemini-2.5-pro-exp-03-25'),
+      model: google('gemini-1.5-pro-latest'),
       messages,
       system: SYSTEM_PROMPT,
       tools: {

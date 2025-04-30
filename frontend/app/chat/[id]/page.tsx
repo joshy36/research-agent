@@ -12,7 +12,14 @@ import {
   Loader2,
   XCircle,
 } from 'lucide-react';
-import React, { use, useEffect, useRef, useState } from 'react';
+import React, {
+  use,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -23,7 +30,6 @@ export default function ChatPage({
   params: Promise<{ id: string }>;
 }) {
   const params = use(paramsPromise);
-  const [loading, setLoading] = useState(false);
   const [stepStates, setStepStates] = useState<{
     [key: string]: { status: 'loading' | 'completed' | 'error'; data?: any };
   }>({
@@ -73,8 +79,8 @@ export default function ChatPage({
     api: 'http://localhost:3001/api/chat',
     body: { chatId: params.id },
   });
-  const messagesEndRef = useRef<HTMLDivElement>(null); // From step 1
-  const hasLoggedProcessedArticlesRef = useRef(false);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -84,18 +90,102 @@ export default function ChatPage({
     scrollToBottom();
   }, [messages]);
 
-  const steps = [
-    'Extracting key terms',
-    'Fetching relevant articles',
-    'Processing and embedding papers',
-  ];
+  const steps = useMemo(
+    () => [
+      'Extracting key terms',
+      'Fetching relevant articles',
+      'Processing and embedding papers',
+    ],
+    [],
+  );
 
-  const stateToStep: { [key: string]: string } = {
-    parseQuery: 'Extracting key terms',
-    fetchMetadata: 'Fetching relevant articles',
-    processPaper: 'Processing and embedding papers',
-    Complete: 'Processing and embedding papers',
-  };
+  const stateToStep = useMemo(
+    () =>
+      ({
+        parseQuery: 'Extracting key terms',
+        fetchMetadata: 'Fetching relevant articles',
+        processPaper: 'Processing and embedding papers',
+        Complete: 'Processing and embedding papers',
+      }) as const,
+    [],
+  );
+
+  type TaskState = 'parseQuery' | 'fetchMetadata' | 'processPaper' | 'Complete';
+
+  const updateStepStates = useCallback(
+    (data: {
+      state: TaskState;
+      parsed_query?: { keyTerms: string[]; rawTerms: string[] };
+      chats?: Array<{
+        chat_resources: Array<{
+          resources: {
+            pmid: number;
+            pmcid: number;
+            title: string;
+            authors: string[];
+            journal: string;
+            pub_date: string;
+            source_url: string;
+            full_text_url: string;
+          };
+        }>;
+      }>;
+      processed_articles?: number;
+      total_articles?: number;
+    }) => {
+      const { state, parsed_query, chats, processed_articles, total_articles } =
+        data;
+      const stepName = stateToStep[state];
+      if (stepName) {
+        setStepStates((prev) => {
+          const newStates = { ...prev };
+          steps.forEach((step) => {
+            if (!newStates[step]) newStates[step] = { status: 'loading' };
+          });
+
+          if (
+            [
+              'parseQuery',
+              'fetchMetadata',
+              'processPaper',
+              'Complete',
+            ].includes(state)
+          ) {
+            newStates['Extracting key terms'] = {
+              status: 'completed',
+              data: parsed_query,
+            };
+          }
+          if (['fetchMetadata', 'processPaper', 'Complete'].includes(state)) {
+            newStates['Fetching relevant articles'] = {
+              status: 'completed',
+              data: chats?.[0]?.chat_resources || [],
+            };
+          }
+          if (state === 'processPaper') {
+            newStates['Processing and embedding papers'] = {
+              status: 'loading',
+              data: {
+                processed_articles: processed_articles || 0,
+                total_articles: total_articles || 0,
+              },
+            };
+          }
+          if (state === 'Complete') {
+            newStates['Processing and embedding papers'] = {
+              status: 'completed',
+              data: {
+                processed_articles: processed_articles || 0,
+                total_articles: total_articles || 0,
+              },
+            };
+          }
+          return newStates;
+        });
+      }
+    },
+    [setStepStates, stateToStep, steps],
+  );
 
   // Fetch initial task state and messages
   useEffect(() => {
@@ -153,57 +243,7 @@ export default function ChatPage({
       }
     }
     fetchInitialData();
-  }, [params.id, setMessages]);
-
-  const updateStepStates = (data: any) => {
-    const { state, parsed_query, chats, processed_articles, total_articles } =
-      data;
-    const stepName = stateToStep[state];
-    if (stepName) {
-      setStepStates((prev) => {
-        const newStates = { ...prev };
-        steps.forEach((step) => {
-          if (!newStates[step]) newStates[step] = { status: 'loading' };
-        });
-
-        if (
-          ['parseQuery', 'fetchMetadata', 'processPaper', 'Complete'].includes(
-            state,
-          )
-        ) {
-          newStates['Extracting key terms'] = {
-            status: 'completed',
-            data: parsed_query,
-          };
-        }
-        if (['fetchMetadata', 'processPaper', 'Complete'].includes(state)) {
-          newStates['Fetching relevant articles'] = {
-            status: 'completed',
-            data: chats?.[0]?.chat_resources || [],
-          };
-        }
-        if (state === 'processPaper') {
-          newStates['Processing and embedding papers'] = {
-            status: 'loading',
-            data: {
-              processed_articles: processed_articles || 0,
-              total_articles: total_articles || 0,
-            },
-          };
-        }
-        if (state === 'Complete') {
-          newStates['Processing and embedding papers'] = {
-            status: 'completed',
-            data: {
-              processed_articles: processed_articles || 0,
-              total_articles: total_articles || 0,
-            },
-          };
-        }
-        return newStates;
-      });
-    }
-  };
+  }, [params.id, setMessages, updateStepStates]);
 
   // Subscribe to task updates and chat resources
   useEffect(() => {
@@ -219,7 +259,7 @@ export default function ChatPage({
           table: 'tasks',
           filter: `task_id=eq.${task.task_id}`,
         },
-        async (payload: { new: any }) => {
+        async () => {
           // Fetch the full task data with resources when task is updated
           const { data: updatedTask, error } = await supabase
             .from('tasks')
@@ -298,7 +338,7 @@ export default function ChatPage({
       supabase.removeChannel(channel);
       supabase.removeChannel(chatResourcesChannel);
     };
-  }, [task?.task_id, params.id]);
+  }, [task?.task_id, params.id, updateStepStates]);
 
   function convertToUIMessages(messages: Array<any>): Array<UIMessage> {
     return messages.map((message) => ({
@@ -396,7 +436,7 @@ export default function ChatPage({
                       {m.role === 'user'
                         ? // Render user messages as plain text
                           m.parts.map((part, index) => (
-                            // @ts-ignore
+                            // @ts-expect-error - part.text is guaranteed to exist for user messages
                             <p key={index}>{part.text}</p>
                           ))
                         : // Render assistant messages with Markdown
@@ -642,7 +682,7 @@ export default function ChatPage({
                           : 'bg-red-500'
                   }`}
                 />
-                <span className="capitalize">{status} - Gemini 2.5 Pro</span>
+                <span className="capitalize">{status} - Gemini 1.5 Pro</span>
               </div>
               <div className="relative">
                 <input
@@ -651,11 +691,15 @@ export default function ChatPage({
                   onChange={handleInputChange}
                   placeholder="Type your message..."
                   className="w-full rounded-lg bg-zinc-800/80 backdrop-blur-sm pl-4 pr-12 py-3 text-white placeholder:text-zinc-400 border border-zinc-700/50 focus:outline-none focus:border-zinc-600"
-                  disabled={loading}
+                  disabled={status === 'submitted' || status === 'streaming'}
                 />
                 <button
                   type="submit"
-                  disabled={loading || !input.trim()}
+                  disabled={
+                    status === 'submitted' ||
+                    status === 'streaming' ||
+                    !input.trim()
+                  }
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-zinc-400 hover:text-white hover:bg-zinc-700/50 disabled:opacity-30 disabled:hover:text-zinc-400 disabled:hover:bg-transparent disabled:cursor-auto transition-colors border border-zinc-700/50"
                 >
                   <svg
