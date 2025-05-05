@@ -398,7 +398,7 @@ export default function ChatPage({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="h-full">
       {/* Main container for both content and input */}
       <div className="max-w-3xl mx-auto flex flex-col h-full w-full">
         {/* Scrollable content area with padding for the fixed input */}
@@ -548,13 +548,10 @@ export default function ChatPage({
                             </div>
                           </div>
                           {activeStep === step && stepStates[step]?.data && (
-                            <div className="mt-2 p-3 bg-zinc-900 rounded-md text-xs text-gray-400 border border-zinc-800">
+                            <div className="p-2 rounded-md text-xs text-gray-400 ">
                               {step === 'Extracting key terms' &&
                                 stepStates[step]?.data?.keyTerms && (
-                                  <div className="space-y-2">
-                                    <div className="font-medium text-gray-300">
-                                      Key Terms:
-                                    </div>
+                                  <div className="">
                                     <div className="flex flex-wrap gap-2">
                                       {stepStates[step].data.keyTerms.map(
                                         (term: string, index: number) => (
@@ -643,7 +640,7 @@ export default function ChatPage({
                       {Object.values(stepStates).every(
                         (state) => state.status === 'completed',
                       ) && (
-                        <div className="mt-4 p-4 bg-green-900/20 border border-green-800/50 rounded-lg">
+                        <div className="mt-4 p-4 bg-gradient-to-r from-green-900/40 to-black-900/20 border border-green-900/50 rounded-lg">
                           <div className="flex items-center gap-2 text-green-400">
                             <CheckCircle2 className="w-4 h-4" />
                             <span className="font-medium">
@@ -669,30 +666,22 @@ export default function ChatPage({
         {/* Input form */}
         <div className="w-full">
           <form onSubmit={handleSubmit} className="px-4">
-            <div className="p-3 pt-3 bg-zinc-900/80 backdrop-blur-sm rounded-t-xl border-t border-zinc-700">
-              <div className="flex items-center gap-2 text-sm text-zinc-400 mb-2">
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    status === 'submitted'
-                      ? 'bg-yellow-500'
-                      : status === 'streaming'
-                        ? 'bg-blue-500 animate-pulse'
-                        : status === 'ready'
-                          ? 'bg-green-500 animate-pulse'
-                          : 'bg-red-500'
-                  }`}
-                />
-                <span className="capitalize">{status} - Gemini 1.5 Pro</span>
-              </div>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={handleInputChange}
-                  placeholder="Type your message..."
-                  className="w-full rounded-lg bg-zinc-800/80 backdrop-blur-sm pl-4 pr-12 py-3 text-white placeholder:text-zinc-400 border border-zinc-700/50 focus:outline-none focus:border-zinc-600"
-                  disabled={status === 'submitted' || status === 'streaming'}
-                />
+            <div className="pb-6 p-3 pt-3 bg-zinc-900/80 backdrop-blur-sm rounded-t-xl border-t border-zinc-700">
+              <div className="flex flex-row justify-between">
+                <div className="flex items-center gap-2 text-sm text-zinc-400 mb-4">
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      status === 'submitted'
+                        ? 'bg-yellow-500'
+                        : status === 'streaming'
+                          ? 'bg-blue-500 animate-pulse'
+                          : status === 'ready'
+                            ? 'bg-green-500 animate-pulse'
+                            : 'bg-red-500'
+                    }`}
+                  />
+                  <span className="capitalize">{status} - Gemini 1.5 Pro</span>
+                </div>
                 <button
                   type="submit"
                   disabled={
@@ -700,7 +689,7 @@ export default function ChatPage({
                     status === 'streaming' ||
                     !input.trim()
                   }
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-zinc-400 hover:text-white hover:bg-zinc-700/50 disabled:opacity-30 disabled:hover:text-zinc-400 disabled:hover:bg-transparent disabled:cursor-auto transition-colors border border-zinc-700/50"
+                  className="inline-flex cursor-pointer items-center justify-center w-9 h-9 p-2 rounded-lg bg-white text-gray-900 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed shadow border border-gray-200 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-300"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -718,6 +707,21 @@ export default function ChatPage({
                   </svg>
                   <span className="sr-only">Send message</span>
                 </button>
+              </div>
+              <div className="flex items-start gap-2">
+                <textarea
+                  value={input}
+                  onChange={handleInputChange}
+                  placeholder="Type your message..."
+                  className="w-full custom-scrollbar-sidebar pl-4 pr-4 text-white placeholder:text-zinc-400 focus:outline-none resize-none min-h-[40px] max-h-[240px]"
+                  disabled={status === 'submitted' || status === 'streaming'}
+                  rows={1}
+                  onInput={(e) => {
+                    e.currentTarget.style.height = 'auto';
+                    e.currentTarget.style.height =
+                      Math.min(e.currentTarget.scrollHeight, 240) + 'px';
+                  }}
+                />
               </div>
             </div>
           </form>

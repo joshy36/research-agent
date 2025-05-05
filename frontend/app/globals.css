@@ -137,10 +137,10 @@ body {
 /* Custom Scrollbar */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #4b5563 #0a0a0a;
+  scrollbar-color: #454545 #0a0a0a;
 }
 
 .custom-scrollbar-sidebar {
   scrollbar-width: thin;
-  scrollbar-color: #4b5563 #171717;
+  scrollbar-color: #454545 #171717;
 }
