@@ -4,19 +4,21 @@ import * as amqp from 'amqplib';
 import { z } from 'zod';
 import { generateObject } from 'ai';
 import { prompt } from './prompt.js';
-import { Context } from './types.js';
+import { Context } from '../../libs/types.js';
 import { google } from '@ai-sdk/google';
-import { supabase } from './supabase.js';
-import { sendToQueue } from './rabbitmq.js';
+import { supabase } from '../../libs/supabase.js';
+import { sendToQueue } from '../../libs/rabbitmq.js';
 import { fetchArticlesMetadata } from './utils/fetchArticlesMetadata.js';
 import { chunkAndEmbedPaper } from './utils/generateEmbedding.js';
 import { toMeshHeading } from './utils/toMeshHeading.js';
+import { waitForRabbitMQ } from './utils/waitForRabbitMQ.js';
 
 const QUEUE_NAME = 'task_queue';
-const RABBITMQ_URL = 'amqp://localhost:5672';
+const RABBITMQ_URL = process.env.RABBITMQ_URL!;
 
 async function startWorker() {
   try {
+    await waitForRabbitMQ(RABBITMQ_URL);
     const connection = await amqp.connect(RABBITMQ_URL);
     const channel = await connection.createChannel();
 
@@ -25,7 +27,7 @@ async function startWorker() {
 
     channel.consume(
       QUEUE_NAME,
-      async (msg) => {
+      async (msg: any) => {
         if (!msg) return;
 
         try {

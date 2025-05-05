@@ -1,4 +1,4 @@
-import { supabase } from './supabase.js';
+import { supabase } from '../../libs/supabase.js';
 import { google } from '@ai-sdk/google';
 import { streamText, tool } from 'ai';
 import { z } from 'zod';

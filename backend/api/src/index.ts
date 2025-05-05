@@ -1,7 +1,11 @@
 import 'dotenv/config';
 import express, { Request, Response } from 'express';
-import { sendToQueue, getQueueStatus, purgeQueue } from './rabbitmq.js';
-import { supabase } from './supabase.js';
+import {
+  sendToQueue,
+  getQueueStatus,
+  purgeQueue,
+} from '../../libs/rabbitmq.js';
+import { supabase } from '../../libs/supabase.js';
 import { generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';

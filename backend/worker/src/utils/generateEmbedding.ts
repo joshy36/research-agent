@@ -1,7 +1,7 @@
 import { embedMany } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { supabase } from '../supabase.js';
-import { Context } from '../types.js';
+import { supabase } from '../../../libs/supabase.js';
+import { Context } from '../../../libs/types.js';
 
 export const googleProvider = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY!,

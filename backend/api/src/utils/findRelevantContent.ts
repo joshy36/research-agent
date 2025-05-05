@@ -1,5 +1,5 @@
-import { googleProvider } from './generateEmbedding.js';
-import { supabase } from '../supabase.js';
+import { googleProvider } from '../../../worker/src/utils/generateEmbedding.js';
+import { supabase } from '../../../libs/supabase.js';
 import { embed } from 'ai';
 
 export const generateEmbedding = async (value: string): Promise<number[]> => {

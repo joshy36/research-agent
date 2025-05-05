@@ -20,7 +20,9 @@ export async function toMeshHeading(term: string): Promise<string[]> {
     `?db=mesh&term=${encodeURIComponent(term)}&retmode=json&retmax=0&api_key=${
       process.env.NCBI_API_KEY
     }`;
-  const r = (await fetch(url).then((res) => res.json())) as ESearchResponseFull;
+  const r = (await fetch(url).then((res: any) =>
+    res.json()
+  )) as ESearchResponseFull;
 
   const trans = r.esearchresult?.translationset?.[0]?.to;
   if (!trans) return [];

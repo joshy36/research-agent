@@ -2,7 +2,7 @@ import * as amqp from 'amqplib';
 import { Context } from './types.js';
 
 const QUEUE_NAME = 'task_queue';
-const RABBITMQ_URL = 'amqp://localhost:5672';
+const RABBITMQ_URL = process.env.RABBITMQ_URL!;
 
 let channel: amqp.Channel | null = null;
 

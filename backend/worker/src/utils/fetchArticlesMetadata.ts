@@ -1,4 +1,4 @@
-import { Context } from '../types.js';
+import { Context } from '../../../libs/types.js';
 
 export const fetchArticlesMetadata = async (context: Context) => {
   const keyTerms = context.parsedQuery?.keyTerms;

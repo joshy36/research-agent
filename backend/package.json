@@ -1,46 +1,22 @@
 {
+  "private": true,
   "name": "backend",
-  "version": "1.0.0",
-  "description": "",
-  "main": "app.ts",
-  "type": "module",
+  "workspaces": [
+    "api",
+    "worker",
+    "libs"
+  ],
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "start:worker": "node dist/worker.js",
-    "dev:tsc": "tsc --watch --preserveWatchOutput",
-    "dev:node": "node --enable-source-maps --watch dist/index.js",
-    "dev:node:worker": "node --enable-source-maps --watch dist/worker.js",
-    "dev": "concurrently \"npm run dev:tsc\" \"npm run dev:node\"",
-    "dev:worker": "concurrently \"npm run dev:tsc\" \"npm run dev:node:worker\"",
-    "dev:all": "concurrently \"npm run dev:tsc\" \"npm run dev:node\" \"npm run dev:node:worker\"",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "queue": "docker start rabbitmq"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "@ai-sdk/google": "^1.2.10",
-    "@ai-sdk/openai": "^1.3.9",
-    "@supabase/supabase-js": "^2.49.4",
-    "ai": "^4.3.4",
-    "amqplib": "^0.10.7",
-    "dotenv": "^16.4.7",
-    "express": "^5.1.0",
-    "p-limit": "^6.2.0",
-    "zod": "^3.24.2"
+    "build": "npm run build -w api && npm run build -w worker",
+    "dev": "concurrently -k \"npm:start -w api\" \"npm:start -w worker\"",
+    "lint": "eslint \"{api,worker,libs}/src/**/*.{ts,tsx}\" --max-warnings 0"
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.7",
     "@types/express": "^5.0.1",
-    "@types/node": "^22.14.0",
     "concurrently": "^9.1.2",
-    "esbuild": "^0.25.2",
-    "nodemon": "^3.1.9",
-    "npm-run-all": "^4.1.5",
+    "eslint": "^9.0.0",
     "ts-node": "^10.9.2",
-    "tsx": "^4.19.3",
     "typescript": "^5.8.3"
   }
 }
