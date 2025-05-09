@@ -44,7 +44,7 @@ export const findRelevantContent = async (
     {
       query_embedding: userQueryEmbedded,
       match_threshold: 0.6,
-      match_count: 10,
+      match_count: 20,
       resource_ids: resourceIds,
     }
   );

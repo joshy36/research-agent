@@ -1,10 +1,6 @@
 import 'dotenv/config';
 import express, { Request, Response } from 'express';
-import {
-  sendToQueue,
-  getQueueStatus,
-  purgeQueue,
-} from '../../libs/rabbitmq.js';
+import { sendToQueue } from '../../libs/queue.js';
 import { supabase } from '../../libs/supabase.js';
 import { generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
@@ -118,7 +114,21 @@ app.post('/queue', async (req: Request, res: Response) => {
 
 app.get('/queue/status', async (_req: Request, res: Response) => {
   try {
-    const status = await getQueueStatus();
+    const { data, error } = await supabase.from('queue').select('state');
+
+    if (error) throw error;
+
+    const status = {
+      total: data.length,
+      byState: data.reduce(
+        (acc: Record<string, number>, curr: { state: string }) => {
+          acc[curr.state] = (acc[curr.state] || 0) + 1;
+          return acc;
+        },
+        {}
+      ),
+    };
+
     res.status(200).json(status);
   } catch (error) {
     console.error('Queue status error:', error);
@@ -144,7 +154,8 @@ app.post('/api/chat', async (req: Request, res: Response) => {
 
 app.post('/queue/purge', async (_req: Request, res: Response) => {
   try {
-    await purgeQueue();
+    const { error } = await supabase.from('queue').delete().neq('id', 0);
+    if (error) throw error;
     res.status(200).json({ status: 'Queue purged successfully' });
   } catch (error) {
     console.error('Queue purge error:', error);

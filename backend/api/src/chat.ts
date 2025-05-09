@@ -1,6 +1,6 @@
 import { supabase } from '../../libs/supabase.js';
 import { google } from '@ai-sdk/google';
-import { streamText, tool } from 'ai';
+import { generateText, streamText, tool } from 'ai';
 import { z } from 'zod';
 import { findRelevantContent } from './utils/findRelevantContent.js';
 import { Request } from 'express';
@@ -40,9 +40,13 @@ Your goal is to deliver trustworthy, well-sourced biomedical answers—nothing m
 export async function handleChatRequest(req: Request): Promise<Response> {
   try {
     const { chatId, messages } = req.body;
-    console.log(JSON.stringify(req.body, null, 2));
+    console.log('Received chat request:', JSON.stringify(req.body, null, 2));
 
     if (!chatId || !messages?.length) {
+      console.log('Missing required fields:', {
+        chatId,
+        messagesLength: messages?.length,
+      });
       return new Response(
         JSON.stringify({
           error: 'Missing required fields: chatId and messages',
@@ -55,14 +59,17 @@ export async function handleChatRequest(req: Request): Promise<Response> {
       (message: { role: string }) => message.role === 'user'
     );
     const mostRecentUserMessage = userMessages.at(-1);
+    console.log('Most recent user message:', mostRecentUserMessage);
 
     if (!mostRecentUserMessage) {
+      console.log('No user message found in messages array');
       return new Response(JSON.stringify({ error: 'No user message found' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
+    console.log('Storing user message in database...');
     const { error: messageError } = await supabase.from('messages').insert({
       chat_id: chatId,
       parts: mostRecentUserMessage.parts,
@@ -70,11 +77,12 @@ export async function handleChatRequest(req: Request): Promise<Response> {
     });
 
     if (messageError) {
+      console.error('Failed to store user message:', messageError);
       throw new Error(`Failed to store user message: ${messageError.message}`);
     }
 
     const result = streamText({
-      model: google('gemini-1.5-pro-latest'),
+      model: google('gemini-2.0-flash'),
       messages,
       system: SYSTEM_PROMPT,
       tools: {
@@ -84,11 +92,17 @@ export async function handleChatRequest(req: Request): Promise<Response> {
           parameters: z.object({
             question: z.string().describe('the users question'),
           }),
-          execute: async ({ question }) =>
-            findRelevantContent(question, chatId),
+          execute: async ({ question }) => {
+            console.log(
+              'Executing getInformation tool with question:',
+              question
+            );
+            return findRelevantContent(question, chatId);
+          },
         }),
       },
       onFinish: async ({ response }) => {
+        console.log('AI stream finished, processing response...');
         const assistantMessages = response.messages.filter(
           (msg) => msg.role === 'assistant'
         );
@@ -96,6 +110,7 @@ export async function handleChatRequest(req: Request): Promise<Response> {
         if (assistantMessages.length > 0) {
           const assistantMessage =
             assistantMessages[assistantMessages.length - 1];
+          console.log('Storing assistant message in database...');
           const { error: storeError } = await supabase.from('messages').insert({
             chat_id: chatId,
             parts: assistantMessage?.content,
@@ -104,11 +119,16 @@ export async function handleChatRequest(req: Request): Promise<Response> {
 
           if (storeError) {
             console.error('Failed to store assistant message:', storeError);
+          } else {
+            console.log('Successfully stored assistant message');
           }
+        } else {
+          console.log('No assistant messages found in response');
         }
       },
     });
 
+    console.log('Returning stream response');
     return result.toDataStreamResponse();
   } catch (error) {
     console.error('Chat request error:', error);

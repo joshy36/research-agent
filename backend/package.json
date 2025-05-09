@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "build": "npm run build -w api && npm run build -w worker",
-    "dev": "concurrently -k \"npm:start -w api\" \"npm:start -w worker\"",
+    "dev": "concurrently -k \"npm:dev -w api\" \"npm:dev -w worker\"",
     "lint": "eslint \"{api,worker,libs}/src/**/*.{ts,tsx}\" --max-warnings 0"
   },
   "devDependencies": {
