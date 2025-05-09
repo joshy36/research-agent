@@ -1,21 +1,10 @@
 services:
   - type: web
-    name: research-agent-api
+    name: research-agent
     env: node
     rootDir: backend
-    buildCommand: npm install && npm run build -w api
-    startCommand: node api/dist/api/src/index.js
-    envVars:
-      - key: NODE_ENV
-        value: production
-      # Add other environment variables here
-
-  - type: worker
-    name: research-agent-worker
-    env: node
-    rootDir: backend
-    buildCommand: npm install && npm run build -w worker
-    startCommand: node worker/dist/worker/src/index.js
+    buildCommand: npm install && npm run build -w api && npm run build -w worker
+    startCommand: node api/dist/api/src/index.js & node worker/dist/worker/src/index.js
     envVars:
       - key: NODE_ENV
         value: production
