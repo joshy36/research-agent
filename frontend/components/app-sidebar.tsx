@@ -17,7 +17,6 @@ import {
 
 function ChatList({ pathname }: { pathname: string }) {
   const [chats, setChats] = useState<any[]>([]);
-
   useEffect(() => {
     async function fetchChats() {
       try {
@@ -41,7 +40,26 @@ function ChatList({ pathname }: { pathname: string }) {
     }
 
     fetchChats();
-  }, []); // Remove chatId dependency
+
+    const channel = supabase
+      .channel('chats-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'chats',
+        },
+        async () => {
+          await fetchChats();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const navItems = useMemo(
     () =>

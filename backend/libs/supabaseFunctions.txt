@@ -49,20 +49,34 @@ DECLARE
   new_count integer;
   total_count integer;
 BEGIN
+  -- Get current counts first for logging
+  SELECT processed_articles, total_articles 
+  INTO new_count, total_count
+  FROM tasks
+  WHERE task_id = task_id_param;
+
+  -- Log current state
+  RAISE NOTICE 'Current state - Processed: %, Total: %', new_count, total_count;
+
   -- Update processed_articles atomically and get the new value
   UPDATE tasks
   SET processed_articles = processed_articles + 1
   WHERE task_id = task_id_param
   RETURNING processed_articles INTO new_count;
 
-  -- Get total_articles
+  -- Get updated total_articles
   SELECT total_articles INTO total_count
   FROM tasks
   WHERE task_id = task_id_param;
 
+  -- Log final state
+  RAISE NOTICE 'Final state - Processed: %, Total: %, Is Complete: %', 
+    new_count, total_count, (new_count >= total_count);
+
   -- Return the new count and whether the task is complete
+  -- Only mark as complete if we have processed all articles and have at least one article
   RETURN QUERY
-  SELECT new_count, (new_count >= total_count) AS is_complete;
+  SELECT new_count, (new_count >= total_count AND total_count > 0) AS is_complete;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -77,5 +91,20 @@ BEGIN
   WHERE chat_id = chat_id_param;
   
   RETURN next_number;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION decrement_total_articles(task_id_param uuid)
+RETURNS integer AS $$
+DECLARE
+  new_count integer;
+BEGIN
+  -- Update total_articles atomically and get the new value
+  UPDATE tasks
+  SET total_articles = total_articles - 1
+  WHERE task_id = task_id_param
+  RETURNING total_articles INTO new_count;
+  
+  RETURN new_count;
 END;
 $$ LANGUAGE plpgsql;

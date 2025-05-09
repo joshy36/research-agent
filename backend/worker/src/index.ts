@@ -128,24 +128,43 @@ async function processTask(task: {
             const response = await fetch(paperUrl);
             if (!response.ok) {
               console.log(
-                `Failed to fetch paper ${context.article?.pmid}: ${response.status}. Skipping...`
+                `Failed to fetch paper ${context.article?.pmid}: ${response.status}. Removing from total...`
               );
-              // Increment processed articles count even for failed papers
-              await supabase.rpc('increment_processed_articles', {
-                task_id_param: context.taskId,
-              });
+              // Decrement total_articles since this article won't be processed
+              await supabase
+                .from('tasks')
+                .update({
+                  total_articles: supabase.rpc('decrement_total_articles', {
+                    task_id_param: context.taskId,
+                  }),
+                })
+                .eq('task_id', context.taskId);
               return; // Skip this article and continue with others
             }
             const paperJson = await response.json();
             resourceId = await chunkAndEmbedPaper(paperJson, context, paperUrl);
           } catch (error) {
             console.log(
-              `Error processing paper ${context.article?.pmid}: ${error}. Skipping...`
+              `Error processing paper ${context.article?.pmid}: ${error}. Removing from total...`
             );
-            // Increment processed articles count even for failed papers
-            await supabase.rpc('increment_processed_articles', {
-              task_id_param: context.taskId,
-            });
+            // Decrement total_articles since this article won't be processed
+            console.log(
+              `Decrementing total articles for task ${context.taskId}...`
+            );
+            const { data: newCount, error: decrementError } =
+              await supabase.rpc('decrement_total_articles', {
+                task_id_param: context.taskId,
+              });
+
+            if (decrementError) {
+              console.error(
+                'Error decrementing total articles:',
+                decrementError
+              );
+              throw decrementError;
+            }
+
+            console.log(`New total articles count: ${newCount}`);
             return; // Skip this article and continue with others
           }
         }
@@ -168,19 +187,57 @@ async function processTask(task: {
 
         if (rpcError) throw rpcError;
 
-        if (
-          result &&
-          typeof result === 'object' &&
-          'is_complete' in result &&
-          result.is_complete
-        ) {
-          await supabase
-            .from('tasks')
-            .update({ state: 'Complete' })
-            .eq('task_id', context.taskId);
-          console.log(`Task ${context.taskId} completed.`);
-          await completeTask(task.taskId);
+        // Get current task state for verification
+        const { data: currentTask, error: taskError } = await supabase
+          .from('tasks')
+          .select('processed_articles, total_articles, state')
+          .eq('task_id', context.taskId)
+          .single();
+
+        if (taskError) {
+          console.error('Error fetching task state:', taskError);
+        } else {
+          console.log('Current task state:', currentTask);
+
+          // Check if task is complete - either all articles are processed or we have no more articles to process
+          if (
+            currentTask &&
+            currentTask.processed_articles >= currentTask.total_articles &&
+            currentTask.state !== 'Complete'
+          ) {
+            // Only update if not already complete
+            console.log(
+              'Marking task as complete - Processed:',
+              currentTask.processed_articles,
+              'Total:',
+              currentTask.total_articles
+            );
+
+            // Update task state to Complete
+            const { error: updateError } = await supabase
+              .from('tasks')
+              .update({
+                state: 'Complete',
+                processed_articles: currentTask.processed_articles,
+              })
+              .eq('task_id', context.taskId);
+
+            if (updateError) {
+              console.error('Error updating task state:', updateError);
+            } else {
+              console.log('Successfully marked task as complete');
+              await completeTask(task.taskId);
+            }
+            return;
+          }
         }
+
+        // If we get here, task is not complete
+        console.log('Task not complete:', {
+          processedArticles: currentTask?.processed_articles,
+          totalArticles: currentTask?.total_articles,
+          currentState: currentTask?.state,
+        });
         break;
       }
       default:
@@ -194,6 +251,9 @@ async function processTask(task: {
 
 async function startWorker() {
   console.log('Worker started. Waiting for tasks...');
+
+  // Start the completion checker in the background
+  startCompletionChecker();
 
   while (true) {
     try {
@@ -211,6 +271,60 @@ async function startWorker() {
       // Wait before retrying
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
+  }
+}
+
+async function startCompletionChecker() {
+  console.log('Starting completion checker...');
+
+  while (true) {
+    try {
+      // Check for tasks that should be complete
+      const { data: tasks, error } = await supabase
+        .from('tasks')
+        .select('task_id, processed_articles, total_articles, state')
+        .neq('state', 'Complete');
+
+      if (error) {
+        console.error('Error checking for completed tasks:', error);
+      } else if (tasks && tasks.length > 0) {
+        // Filter tasks where processed_articles >= total_articles
+        const completedTasks = tasks.filter(
+          (task) => task.processed_articles >= task.total_articles
+        );
+
+        if (completedTasks.length > 0) {
+          console.log(
+            `Found ${completedTasks.length} tasks that should be complete`
+          );
+
+          for (const task of completedTasks) {
+            console.log('Completing task:', task.task_id);
+
+            // Update task state to Complete
+            const { error: updateError } = await supabase
+              .from('tasks')
+              .update({
+                state: 'Complete',
+                processed_articles: task.processed_articles,
+              })
+              .eq('task_id', task.task_id);
+
+            if (updateError) {
+              console.error('Error updating task state:', updateError);
+            } else {
+              console.log('Successfully marked task as complete');
+              await completeTask(task.task_id);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in completion checker:', error);
+    }
+
+    // Wait 3 seconds before checking again
+    await new Promise((resolve) => setTimeout(resolve, 3000));
   }
 }
 
