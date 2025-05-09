@@ -2,6 +2,7 @@ services:
   - type: web
     name: research-agent-api
     env: node
+    rootDir: backend
     buildCommand: npm install && npm run build -w api
     startCommand: node api/dist/api/src/index.js
     envVars:
@@ -12,6 +13,7 @@ services:
   - type: worker
     name: research-agent-worker
     env: node
+    rootDir: backend
     buildCommand: npm install && npm run build -w worker
     startCommand: node worker/dist/worker/src/index.js
     envVars:
