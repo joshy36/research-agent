@@ -6,6 +6,7 @@ import { generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
 import { handleChatRequest } from './chat.js';
+import { toNodeStream } from './utils/stream.js';
 
 const app = express();
 const PORT = 3001;
@@ -13,7 +14,8 @@ const PORT = 3001;
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL);
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
   if (req.method === 'OPTIONS') {
     res.sendStatus(200);
   } else {
@@ -22,29 +24,6 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
-
-async function streamResponse(
-  aiResponse: globalThis.Response,
-  expressResponse: Response
-) {
-  for (const [key, value] of aiResponse.headers.entries()) {
-    expressResponse.setHeader(key, value);
-  }
-
-  expressResponse.status(aiResponse.status);
-
-  const reader = aiResponse.body?.getReader();
-  if (!reader) {
-    throw new Error('No response body');
-  }
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    expressResponse.write(value);
-  }
-  expressResponse.end();
-}
 
 app.post('/queue', async (req: Request, res: Response) => {
   try {
@@ -141,8 +120,25 @@ app.get('/queue/status', async (_req: Request, res: Response) => {
 
 app.post('/api/chat', async (req: Request, res: Response) => {
   try {
-    const response = await handleChatRequest(req);
-    await streamResponse(response, res);
+    const aiResponse = await handleChatRequest(req); // returns a WHATWG Response
+
+    // Set headers explicitly
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('Cache-Control', 'no-transform');
+    res.setHeader(
+      'Access-Control-Allow-Origin',
+      process.env.FRONTEND_URL ?? '*'
+    );
+    res.status(aiResponse.status);
+
+    if (!aiResponse.body) {
+      throw new Error('No response body from AI stream');
+    }
+
+    // Pipe stream to Express response
+    const nodeStream = toNodeStream(aiResponse.body);
+    nodeStream.pipe(res);
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json({
