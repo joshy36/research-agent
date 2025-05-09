@@ -1,5 +1,6 @@
 import { supabase } from '../../libs/supabase.js';
 import { google } from '@ai-sdk/google';
+import { anthropic } from '@ai-sdk/anthropic';
 import { generateText, streamText, tool } from 'ai';
 import { z } from 'zod';
 import { findRelevantContent } from './utils/findRelevantContent.js';
@@ -74,10 +75,8 @@ export async function handleChatRequest(req: Request): Promise<Response> {
       );
     });
 
-    console.log(SYSTEM_PROMPT);
-
     const result = streamText({
-      model: google('gemini-2.0-flash'),
+      model: anthropic('claude-3-5-sonnet-latest'),
       messages: validatedMessages,
       system: SYSTEM_PROMPT,
       maxSteps: 5,

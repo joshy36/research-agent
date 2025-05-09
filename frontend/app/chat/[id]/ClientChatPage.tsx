@@ -620,7 +620,7 @@ export default function ClientChatPage({
           <form onSubmit={handleSubmit} className="px-4">
             <div className="pb-6 p-3 pt-3 bg-zinc-900/80 backdrop-blur-sm rounded-t-xl border-t border-zinc-700">
               <div className="flex flex-row justify-between">
-                <div className="flex items-center gap-2 text-sm text-zinc-400 mb-4">
+                <div className="flex items-center gap-2 text-sm text-zinc-400 mb-4 pl-4">
                   <div
                     className={`w-2 h-2 rounded-full ${
                       status === 'submitted'
@@ -632,9 +632,27 @@ export default function ClientChatPage({
                             : 'bg-red-500'
                     }`}
                   />
-                  <span className="capitalize">
-                    {status} - Gemini 2.0 Flash
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {/* <span className="capitalize">{status} - </span> */}
+                    <div className="flex items-center gap-1">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="text-zinc-400"
+                      >
+                        <g transform="translate(0,2)">
+                          <path
+                            d="M11.375 0h-2.411L13.352 11.13h2.411L11.375 0ZM4.4 0 0 11.13h2.46l0.9-2.336h4.604l0.9 2.336h2.46L6.924 0H4.4Zm-0.244 6.723 1.506-3.909 1.506 3.909H4.156Z"
+                            fill="currentColor"
+                          />
+                        </g>
+                      </svg>
+                      <span>Sonnet 3.5</span>
+                    </div>
+                  </div>
                 </div>
                 <button
                   type="submit"

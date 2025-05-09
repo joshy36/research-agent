@@ -1,5 +1,6 @@
 'use client';
 
+import { logout } from '@/app/login/actions';
 import { ChevronsUpDown, LogOut } from 'lucide-react';
 
 import { User } from '@supabase/supabase-js';
@@ -63,9 +64,13 @@ export function NavUser({ user }: { user: User | null }) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <LogOut />
-              Log out
+            <DropdownMenuItem asChild>
+              <form action={logout}>
+                <button className="flex w-full items-center gap-2 cursor-pointer">
+                  <LogOut className="size-4" />
+                  Log out
+                </button>
+              </form>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

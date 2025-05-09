@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/providers/AuthProvider';
 import { supabase } from '@/providers/supabase';
+import { PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ComponentProps, useEffect, useMemo, useState } from 'react';
@@ -66,7 +67,7 @@ function ChatList({ pathname }: { pathname: string }) {
       chats.map((chat) => ({
         id: chat.id,
         title:
-          chat.title.length > 30 ? `${chat.title.slice(0, 30)}...` : chat.title,
+          chat.title.length > 30 ? `${chat.title.slice(0, 25)}...` : chat.title,
         url: chat.url,
         isActive: pathname === chat.url,
       })),
@@ -83,10 +84,15 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
-        <Link href="/chat" className="hover:bg-sidebar-accent rounded-md p-2">
-          Home
+        <Link
+          href="/chat"
+          className="hover:bg-sidebar-accent rounded-md p-2 flex items-center gap-2 font-bold"
+        >
+          <PlusCircle className="h-4 w-4" />
+          New Chat
         </Link>
       </SidebarHeader>
+      <div className="h-px bg-border" />
       <SidebarContent>
         <ChatList pathname={pathname} />
       </SidebarContent>
