@@ -23,6 +23,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/amqplib": "^0.10.7",
     "@types/express": "^5.0.1",
     "@types/node": "^22.14.0",
     "concurrently": "^9.1.2",
