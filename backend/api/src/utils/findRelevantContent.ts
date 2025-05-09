@@ -61,7 +61,7 @@ export const findRelevantContent = async (
   });
 
   console.log('SIMILAR');
-  console.log(contentWithNumbers.map((x: any) => x.content));
+  // console.log(contentWithNumbers.map((x: any) => x.content));
   console.log('error: ', error);
 
   return contentWithNumbers;

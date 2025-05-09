@@ -74,6 +74,8 @@ export async function handleChatRequest(req: Request): Promise<Response> {
       );
     });
 
+    console.log(SYSTEM_PROMPT);
+
     const result = streamText({
       model: google('gemini-2.0-flash'),
       messages: validatedMessages,
