@@ -50,7 +50,7 @@ export const findRelevantContent = async (
   );
 
   console.log('SIMILAR');
-  console.log(similarGuides.map((x: any) => x.content));
+  // console.log(similarGuides.map((x: any) => x.content));
   console.log('error: ', error);
 
   return similarGuides;

@@ -1,6 +1,6 @@
 import { supabase } from '../../libs/supabase.js';
 import { google } from '@ai-sdk/google';
-import { streamText, tool } from 'ai';
+import { generateText, streamText, tool } from 'ai';
 import { z } from 'zod';
 import { findRelevantContent } from './utils/findRelevantContent.js';
 import { Request } from 'express';
@@ -61,10 +61,24 @@ export async function handleChatRequest(req: Request): Promise<Response> {
       );
     }
 
+    const validatedMessages = messages.filter((message: any) => {
+      if (message.role !== 'user' && message.role !== 'assistant') return false;
+      if (!Array.isArray(message.parts)) return false;
+
+      // Only keep messages with at least one valid text part
+      return message.parts.some(
+        (part: any) =>
+          part?.type === 'text' &&
+          typeof part.text === 'string' &&
+          part.text.trim().length > 0
+      );
+    });
+
     const result = streamText({
       model: google('gemini-2.0-flash'),
-      messages,
+      messages: validatedMessages,
       system: SYSTEM_PROMPT,
+      maxSteps: 5,
       tools: {
         getInformation: tool({
           description:
@@ -77,12 +91,15 @@ export async function handleChatRequest(req: Request): Promise<Response> {
               'Executing getInformation tool with question:',
               question
             );
-            return findRelevantContent(question, chatId);
+            console.log('Finding relevant content for chat ID:', chatId);
+            const content = await findRelevantContent(question, chatId);
+            return content;
           },
         }),
       },
       onFinish: async ({ response }) => {
         console.log('AI stream finished, processing response...');
+        console.log(JSON.stringify(response.messages, null, 2));
         const assistantMessages = response.messages.filter(
           (msg) => msg.role === 'assistant'
         );
@@ -90,7 +107,9 @@ export async function handleChatRequest(req: Request): Promise<Response> {
         if (assistantMessages.length > 0) {
           const assistantMessage =
             assistantMessages[assistantMessages.length - 1];
+
           console.log('Storing assistant message in database...');
+
           const { error: storeError } = await supabase.from('messages').insert({
             chat_id: chatId,
             parts: assistantMessage?.content,
@@ -99,8 +118,17 @@ export async function handleChatRequest(req: Request): Promise<Response> {
 
           if (storeError) {
             console.error('Failed to store assistant message:', storeError);
+            console.error(
+              'Error details:',
+              JSON.stringify(storeError, null, 2)
+            );
           } else {
             console.log('Successfully stored assistant message');
+            console.log('Stored message details:', {
+              chat_id: chatId,
+              role: 'assistant',
+              content_length: assistantMessage?.content?.length,
+            });
           }
         } else {
           console.log('No assistant messages found in response');
@@ -108,7 +136,7 @@ export async function handleChatRequest(req: Request): Promise<Response> {
       },
     });
 
-    console.log('Returning stream response');
+    console.log('Stream text setup complete, returning stream response');
     return result.toDataStreamResponse();
   } catch (error) {
     console.error('Chat request error:', error);
