@@ -3,7 +3,7 @@ services:
     name: research-agent
     env: node
     rootDir: backend
-    buildCommand: npm install && npm install -w api && npm install -w worker && npm run build
+    buildCommand: npm install --include=dev && npm install -w api --include=dev && npm install -w worker --include=dev && npm run build
     startCommand: npm run start
     envVars:
       - key: NODE_ENV
