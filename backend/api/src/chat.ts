@@ -1,46 +1,16 @@
 import { supabase } from '../../libs/supabase.js';
 import { google } from '@ai-sdk/google';
-import { generateText, streamText, tool } from 'ai';
+import { streamText, tool } from 'ai';
 import { z } from 'zod';
 import { findRelevantContent } from './utils/findRelevantContent.js';
 import { Request } from 'express';
-
-const SYSTEM_PROMPT = `You are PubMed Assistant, an evidence-based biomedical research aide. Your **only** knowledge source is the getInformation tool, which returns excerpts from PubMed articles relevant to the user’s question.
-
-When you respond  
-• **Search first.**  
-• Call getInformation with the user’s question, then base every claim **solely** on the passages it returns.  
-
-Answer clearly and concisely, matching the user’s expertise.
-
-**Cite precisely**  
-• After every factual statement add a citation tag like [1] or [2–3].
-
-**References section — must follow this exact template so the frontend can parse it**
-
-(blank line)  
-References:  
-[1] First author et al., Article Title, Journal (Year). PMID: 123456  
-[2] …  
-
-Formatting rules  
-• Precede “References:” with **two** newline characters.  
-• One reference per line, starting with a bracketed number.  
-• End each line with “PMID:” followed by the PubMed ID.  
-• If there are multiple authors, list only the first + “et al.”  
-• Do **not** insert extra text or blank lines between references.
-
-If the retrieved passages are insufficient, reply **exactly**:  
-“No relevant PubMed information was found to answer this question.”
-
-Never speculate or draw on outside knowledge. Keep summaries faithful to the cited sources and be brief unless the user asks for more detail.
-
-Your goal is to deliver trustworthy, well-sourced biomedical answers—nothing more, nothing less.`;
+import { SYSTEM_PROMPT } from './utils/systemPrompt.js';
 
 export async function handleChatRequest(req: Request): Promise<Response> {
   try {
     const { chatId, messages } = req.body;
-    console.log('Received chat request:', JSON.stringify(req.body, null, 2));
+    // console.log('Received chat request:', JSON.stringify(req.body, null, 2));
+    console.log('Most recent message:', messages[messages.length - 1]);
 
     if (!chatId || !messages?.length) {
       console.log('Missing required fields:', {
@@ -69,16 +39,26 @@ export async function handleChatRequest(req: Request): Promise<Response> {
       });
     }
 
-    console.log('Storing user message in database...');
-    const { error: messageError } = await supabase.from('messages').insert({
-      chat_id: chatId,
-      parts: mostRecentUserMessage.parts,
-      role: 'user',
-    });
+    // Only store user message if it's the most recent message
+    const mostRecentMessage = messages[messages.length - 1];
+    if (mostRecentMessage.role === 'user') {
+      console.log('Storing user message in database...');
+      const { error: messageError } = await supabase.from('messages').insert({
+        chat_id: chatId,
+        parts: mostRecentUserMessage.parts,
+        role: 'user',
+      });
 
-    if (messageError) {
-      console.error('Failed to store user message:', messageError);
-      throw new Error(`Failed to store user message: ${messageError.message}`);
+      if (messageError) {
+        console.error('Failed to store user message:', messageError);
+        throw new Error(
+          `Failed to store user message: ${messageError.message}`
+        );
+      }
+    } else {
+      console.log(
+        'Skipping user message storage as most recent message is not from user'
+      );
     }
 
     const result = streamText({

@@ -65,7 +65,12 @@ app.post('/queue', async (req: Request, res: Response) => {
 
     const { error: messageError } = await supabase.from('messages').insert({
       chat_id: chatData.id,
-      content: message,
+      parts: [
+        {
+          type: 'text',
+          text: message,
+        },
+      ],
       role: 'user',
     });
 
