@@ -51,9 +51,9 @@ export async function signup(formData: FormData) {
   const { error } = await supabase.auth.signUp(data);
 
   if (error) {
-    redirect('/error');
+    throw new Error(error.message);
   }
 
-  revalidatePath('/', 'layout');
-  redirect('/');
+  // Instead of redirecting, we'll throw a special error that will be caught and displayed as a success message
+  throw new Error('CHECK_EMAIL');
 }
