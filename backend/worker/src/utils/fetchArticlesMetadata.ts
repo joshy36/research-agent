@@ -8,7 +8,7 @@ export const fetchArticlesMetadata = async (context: Context) => {
   const query = keyTerms?.map((term) => `${term}[mesh]`).join(' AND ');
   const searchUrl = `${baseUrl}esearch.fcgi?db=pmc&term=${encodeURIComponent(
     query ?? ''
-  )}&retmax=5&retmode=json`;
+  )}&retmax=10&retmode=json`;
 
   const searchResponse = await fetch(searchUrl);
   if (!searchResponse.ok) {
@@ -25,7 +25,7 @@ export const fetchArticlesMetadata = async (context: Context) => {
     const orQuery = keyTerms.map((term) => `${term}[mesh]`).join(' OR ');
     const orSearchUrl = `${baseUrl}esearch.fcgi?db=pmc&term=${encodeURIComponent(
       orQuery
-    )}&retmax=5&retmode=json`;
+    )}&retmax=10&retmode=json`;
 
     const orSearchResponse = await fetch(orSearchUrl);
     if (orSearchResponse.ok) {

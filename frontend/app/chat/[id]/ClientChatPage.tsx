@@ -1,6 +1,6 @@
 'use client';
 
-import { References } from '@/components/references';
+import { wrapReferencesWithHoverCards } from '@/components/references';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/providers/supabase';
 import { useChat } from '@ai-sdk/react';
@@ -19,9 +19,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import remarkGfm from 'remark-gfm';
 
 export default function ClientChatPage({
   params,
@@ -53,6 +50,7 @@ export default function ClientChatPage({
     processed_articles?: number;
     chats?: Array<{
       chat_resources: Array<{
+        number: number;
         resources: {
           pmid: number;
           pmcid: number;
@@ -113,6 +111,7 @@ export default function ClientChatPage({
       parsed_query?: { keyTerms: string[]; rawTerms: string[] };
       chats?: Array<{
         chat_resources: Array<{
+          number: number;
           resources: {
             pmid: number;
             pmcid: number;
@@ -202,6 +201,7 @@ export default function ClientChatPage({
             *,
             chats!inner (
               chat_resources (
+                number,
                 resources (
                   authors, full_text_url, journal, pmcid, pmid, pub_date, source_url, title
                 )
@@ -253,6 +253,7 @@ export default function ClientChatPage({
               *,
               chats!inner (
                 chat_resources (
+                  number,
                   resources (
                     authors, full_text_url, journal, pmcid, pmid, pub_date, source_url, title
                   )
@@ -296,6 +297,7 @@ export default function ClientChatPage({
               *,
               chats!inner (
                 chat_resources (
+                  number,
                   resources (
                     authors, full_text_url, journal, pmcid, pmid, pub_date, source_url, title
                   )
@@ -336,50 +338,21 @@ export default function ClientChatPage({
     }));
   }
 
-  function parseReferences(text: string) {
-    const references: Array<{
-      authors: string;
-      title: string;
-      journal: string;
-      year: string;
-      pmid: string;
-    }> = [];
-
-    // Match references in the format [1] Author et al., Title, Journal (Year). PMID: XXXXXX
-    const refRegex =
-      /\[(\d+)\]\s*([^,]+),\s*([^,]+),\s*([^(]+)\s*\((\d{4})\)\.\s*PMID:\s*(\d+)/g;
-    let match;
-
-    while ((match = refRegex.exec(text)) !== null) {
-      references.push({
-        authors: match[2].trim(),
-        title: match[3].trim(),
-        journal: match[4].trim(),
-        year: match[5],
-        pmid: match[6],
-      });
+  function splitMessageAndReferences(text: string) {
+    if (!task?.chats?.[0]?.chat_resources) {
+      return { message: text, references: [] };
     }
 
-    return references;
-  }
+    // Convert chat_resources to the format expected by wrapReferencesWithHoverCards
+    const references = task.chats[0].chat_resources.map((resource) => ({
+      authors: resource.resources.authors.join(', '),
+      title: resource.resources.title,
+      journal: resource.resources.journal,
+      year: resource.resources.pub_date,
+      pmid: resource.resources.pmid.toString(),
+    }));
 
-  function splitMessageAndReferences(text: string) {
-    const refIndex = text.indexOf('\n\nReferences:');
-    if (refIndex === -1) return { message: text, references: [] };
-
-    const message = text.substring(0, refIndex).trim();
-    const references = parseReferences(text.substring(refIndex));
-
-    // Deduplicate references based on PMID
-    const uniqueReferences = references.reduce((acc: any[], current) => {
-      const exists = acc.find((item) => item.pmid === current.pmid);
-      if (!exists) {
-        acc.push(current);
-      }
-      return acc;
-    }, []);
-
-    return { message, references: uniqueReferences };
+    return { message: text, references };
   }
 
   return (
@@ -424,24 +397,16 @@ export default function ClientChatPage({
                             // @ts-expect-error - part.text is guaranteed to exist for user messages
                             <p key={index}>{part.text}</p>
                           ))
-                        : // Render assistant messages with Markdown
+                        : // Render assistant messages with Markdown and references
                           m.parts.map((part, index) => {
                             if (part.type !== 'text') return null;
                             const { message, references } =
                               splitMessageAndReferences(part.text);
-                            return (
-                              <div key={index}>
-                                <ReactMarkdown
-                                  remarkPlugins={[remarkGfm]}
-                                  rehypePlugins={[rehypeRaw]}
-                                >
-                                  {message}
-                                </ReactMarkdown>
-                                {references.length > 0 && (
-                                  <References references={references} />
-                                )}
-                              </div>
+                            const parts = wrapReferencesWithHoverCards(
+                              message,
+                              references,
                             );
+                            return <div key={index}>{parts}</div>;
                           })}
                     </div>
                   </div>
@@ -561,6 +526,7 @@ export default function ClientChatPage({
                                           className="border-b border-zinc-800 last:border-b-0 pb-4 last:pb-0"
                                         >
                                           <div className="font-medium text-gray-300 mb-1">
+                                            [{resource.number}]{' '}
                                             {resource.resources.title}
                                           </div>
                                           <div className="text-gray-400 text-xs mb-1">

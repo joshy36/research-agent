@@ -20,7 +20,7 @@ export const findRelevantContent = async (
 
   const { data: resources, error: resourcesError } = await supabase
     .from('chat_resources')
-    .select('resource_id')
+    .select('resource_id, number')
     .eq('chat_id', chatId);
 
   if (resourcesError) {
@@ -36,7 +36,7 @@ export const findRelevantContent = async (
   }
 
   const resourceIds = resources.map(
-    (resource: { resource_id: string }) => resource.resource_id
+    (resource: { resource_id: string; number: number }) => resource.resource_id
   );
 
   const { data: similarGuides, error } = await supabase.rpc(
@@ -49,9 +49,20 @@ export const findRelevantContent = async (
     }
   );
 
+  // Map the resource numbers to the matched content
+  const contentWithNumbers = similarGuides.map((guide: any) => {
+    const resource = resources.find(
+      (r: any) => r.resource_id === guide.resource_id
+    );
+    return {
+      ...guide,
+      resource_number: resource?.number,
+    };
+  });
+
   console.log('SIMILAR');
-  // console.log(similarGuides.map((x: any) => x.content));
+  console.log(contentWithNumbers.map((x: any) => x.content));
   console.log('error: ', error);
 
-  return similarGuides;
+  return contentWithNumbers;
 };

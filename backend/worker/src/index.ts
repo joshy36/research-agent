@@ -124,17 +124,40 @@ async function processTask(task: {
           console.log(`Resource already exists for URL: ${paperUrl}`);
           resourceId = existingResource[0].id;
         } else {
-          const response = await fetch(paperUrl);
-          if (!response.ok) {
-            throw new Error(`Failed to fetch paper: ${response.status}`);
+          try {
+            const response = await fetch(paperUrl);
+            if (!response.ok) {
+              console.log(
+                `Failed to fetch paper ${context.article?.pmid}: ${response.status}. Skipping...`
+              );
+              // Increment processed articles count even for failed papers
+              await supabase.rpc('increment_processed_articles', {
+                task_id_param: context.taskId,
+              });
+              return; // Skip this article and continue with others
+            }
+            const paperJson = await response.json();
+            resourceId = await chunkAndEmbedPaper(paperJson, context, paperUrl);
+          } catch (error) {
+            console.log(
+              `Error processing paper ${context.article?.pmid}: ${error}. Skipping...`
+            );
+            // Increment processed articles count even for failed papers
+            await supabase.rpc('increment_processed_articles', {
+              task_id_param: context.taskId,
+            });
+            return; // Skip this article and continue with others
           }
-          const paperJson = await response.json();
-          resourceId = await chunkAndEmbedPaper(paperJson, context, paperUrl);
         }
 
         await supabase.from('chat_resources').insert({
           chat_id: chat!.id,
           resource_id: resourceId,
+          number: await supabase
+            .rpc('get_next_chat_resource_number', {
+              chat_id_param: chat!.id,
+            })
+            .then(({ data }) => data),
         });
 
         const { data: result, error: rpcError } = await supabase

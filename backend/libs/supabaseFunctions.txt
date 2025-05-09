@@ -65,3 +65,17 @@ BEGIN
   SELECT new_count, (new_count >= total_count) AS is_complete;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_next_chat_resource_number(chat_id_param uuid)
+RETURNS integer AS $$
+DECLARE
+  next_number integer;
+BEGIN
+  -- Get the next number atomically
+  SELECT COALESCE(MAX(number), 0) + 1 INTO next_number
+  FROM chat_resources
+  WHERE chat_id = chat_id_param;
+  
+  RETURN next_number;
+END;
+$$ LANGUAGE plpgsql;
