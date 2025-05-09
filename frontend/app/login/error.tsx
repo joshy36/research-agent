@@ -40,8 +40,8 @@ export default function Error({
               Check Your Email
             </CardTitle>
             <CardDescription className="text-zinc-400">
-              We've sent you a confirmation email. Please check your inbox and
-              follow the instructions to complete your registration.
+              We&apos;ve sent you a confirmation email. Please check your inbox
+              and follow the instructions to complete your registration.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
