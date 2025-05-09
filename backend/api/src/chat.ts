@@ -88,13 +88,21 @@ export async function handleChatRequest(req: Request): Promise<Response> {
             question: z.string().describe('the users question'),
           }),
           execute: async ({ question }) => {
-            console.log(
-              'Executing getInformation tool with question:',
-              question
-            );
-            console.log('Finding relevant content for chat ID:', chatId);
-            const content = await findRelevantContent(question, chatId);
-            return content;
+            try {
+              console.log(
+                'Executing getInformation tool with question:',
+                question
+              );
+              console.log('Finding relevant content for chat ID:', chatId);
+              const content = await findRelevantContent(question, chatId);
+              if (!content || content.length === 0) {
+                return { error: 'No relevant content found' };
+              }
+              return { content };
+            } catch (error) {
+              console.error('Error in getInformation tool:', error);
+              return { error: 'Failed to fetch relevant content' };
+            }
           },
         }),
       },

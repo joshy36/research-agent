@@ -18,12 +18,17 @@ import {
 
 function ChatList({ pathname }: { pathname: string }) {
   const [chats, setChats] = useState<any[]>([]);
+  const { user } = useAuth();
+
   useEffect(() => {
     async function fetchChats() {
+      if (!user) return;
+
       try {
         const { data, error } = await supabase
           .from('chats')
           .select('*')
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -50,6 +55,7 @@ function ChatList({ pathname }: { pathname: string }) {
           event: '*',
           schema: 'public',
           table: 'chats',
+          filter: `user_id=eq.${user?.id}`,
         },
         async () => {
           await fetchChats();
@@ -60,7 +66,7 @@ function ChatList({ pathname }: { pathname: string }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user]);
 
   const navItems = useMemo(
     () =>

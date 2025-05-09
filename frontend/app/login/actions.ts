@@ -54,6 +54,13 @@ export async function signup(formData: FormData) {
     throw new Error(error.message);
   }
 
-  // Instead of redirecting, we'll throw a special error that will be caught and displayed as a success message
-  throw new Error('CHECK_EMAIL');
+  // Since email confirmations are disabled, we can directly sign in the user
+  const { error: signInError } = await supabase.auth.signInWithPassword(data);
+
+  if (signInError) {
+    throw new Error(signInError.message);
+  }
+
+  revalidatePath('/', 'layout');
+  redirect('/');
 }
