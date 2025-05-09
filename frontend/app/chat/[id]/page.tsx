@@ -76,7 +76,7 @@ export default function ChatPage({
     status,
   } = useChat({
     maxSteps: 3,
-    api: 'http://localhost:3001/api/chat',
+    api: process.env.NEXT_PUBLIC_API_URL + '/api/chat',
     body: { chatId: params.id },
   });
 

@@ -19,7 +19,7 @@ export default function Research() {
     }
     setError(null);
     try {
-      const result = await fetch('http://localhost:3001/queue', {
+      const result = await fetch(process.env.NEXT_PUBLIC_API_URL + '/queue', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

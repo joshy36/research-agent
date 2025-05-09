@@ -47,7 +47,8 @@ function ChatList({ pathname }: { pathname: string }) {
     () =>
       chats.map((chat) => ({
         id: chat.id,
-        title: chat.title,
+        title:
+          chat.title.length > 30 ? `${chat.title.slice(0, 30)}...` : chat.title,
         url: chat.url,
         isActive: pathname === chat.url,
       })),
