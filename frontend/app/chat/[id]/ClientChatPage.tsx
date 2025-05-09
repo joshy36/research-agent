@@ -67,14 +67,7 @@ export default function ClientChatPage({
     }>;
   } | null>(null);
 
-  const {
-    messages,
-    setMessages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    status,
-  } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, status } = useChat({
     maxSteps: 3,
     api: process.env.NEXT_PUBLIC_API_URL + '/api/chat',
     body: { chatId: params.id },
