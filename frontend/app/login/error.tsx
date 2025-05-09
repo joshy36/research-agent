@@ -36,7 +36,7 @@ export default function Error({
         <CardHeader>
           <CardTitle className="text-2xl text-white">Login Error</CardTitle>
           <CardDescription className="text-zinc-400">
-            {error.message}
+            Invalid email or password. Please try again.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
