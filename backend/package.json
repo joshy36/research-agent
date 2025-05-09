@@ -9,7 +9,8 @@
   "scripts": {
     "build": "npm run build -w api && npm run build -w worker",
     "dev": "concurrently -k \"npm:dev -w api\" \"npm:dev -w worker\"",
-    "lint": "eslint \"{api,worker,libs}/src/**/*.{ts,tsx}\" --max-warnings 0"
+    "lint": "eslint \"{api,worker,libs}/src/**/*.{ts,tsx}\" --max-warnings 0",
+    "start": "node api/dist/api/src/index.js & node worker/dist/worker/src/index.js"
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.7",
