@@ -292,7 +292,12 @@ async function startCompletionChecker() {
       } else if (tasks && tasks.length > 0) {
         // Filter tasks where processed_articles >= total_articles
         const completedTasks = tasks.filter(
-          (task) => task.processed_articles >= task.total_articles
+          (task) =>
+            task.processed_articles !== null &&
+            task.total_articles !== null &&
+            task.processed_articles > 0 &&
+            task.total_articles > 0 &&
+            task.processed_articles >= task.total_articles
         );
 
         if (completedTasks.length > 0) {
