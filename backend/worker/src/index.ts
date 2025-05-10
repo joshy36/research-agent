@@ -202,6 +202,8 @@ async function processTask(task: {
           // Check if task is complete - either all articles are processed or we have no more articles to process
           if (
             currentTask &&
+            currentTask.processed_articles > 0 &&
+            currentTask.total_articles > 0 &&
             currentTask.processed_articles >= currentTask.total_articles &&
             currentTask.state !== 'Complete'
           ) {
@@ -290,7 +292,10 @@ async function startCompletionChecker() {
       } else if (tasks && tasks.length > 0) {
         // Filter tasks where processed_articles >= total_articles
         const completedTasks = tasks.filter(
-          (task) => task.processed_articles >= task.total_articles
+          (task) =>
+            task.processed_articles > 0 &&
+            task.total_articles > 0 &&
+            task.processed_articles >= task.total_articles
         );
 
         if (completedTasks.length > 0) {
