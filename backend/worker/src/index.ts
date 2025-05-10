@@ -292,10 +292,7 @@ async function startCompletionChecker() {
       } else if (tasks && tasks.length > 0) {
         // Filter tasks where processed_articles >= total_articles
         const completedTasks = tasks.filter(
-          (task) =>
-            task.processed_articles > 0 &&
-            task.total_articles > 0 &&
-            task.processed_articles >= task.total_articles
+          (task) => task.processed_articles >= task.total_articles
         );
 
         if (completedTasks.length > 0) {
@@ -304,7 +301,13 @@ async function startCompletionChecker() {
           );
 
           for (const task of completedTasks) {
-            console.log('Completing task:', task.task_id);
+            console.log('Task details:', {
+              task_id: task.task_id,
+              state: task.state,
+              processed_articles: task.processed_articles,
+              total_articles: task.total_articles,
+              completion_ratio: `${task.processed_articles}/${task.total_articles}`,
+            });
 
             // Update task state to Complete
             const { error: updateError } = await supabase
@@ -318,7 +321,11 @@ async function startCompletionChecker() {
             if (updateError) {
               console.error('Error updating task state:', updateError);
             } else {
-              console.log('Successfully marked task as complete');
+              console.log('Successfully marked task as complete:', {
+                task_id: task.task_id,
+                final_state: 'Complete',
+                final_processed_articles: task.processed_articles,
+              });
               await completeTask(task.task_id);
             }
           }
