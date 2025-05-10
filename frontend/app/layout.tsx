@@ -31,9 +31,6 @@ export const metadata: Metadata = {
   description:
     'AI-powered research assistant that helps you explore and understand complex topics',
   keywords: ['research', 'AI', 'assistant', 'knowledge', 'learning'],
-  authors: [{ name: 'Research Agent Team' }],
-  viewport: 'width=device-width, initial-scale=1',
-  themeColor: '#000000',
 };
 
 export default async function RootLayout({

@@ -1,7 +1,6 @@
 import { supabase } from './supabase.js';
 import { Context } from './types.js';
 import { v4 as uuidv4 } from 'uuid';
-import { createClient } from '@supabase/supabase-js';
 
 const WORKER_ID = uuidv4();
 
@@ -40,8 +39,7 @@ export async function processNextTask(): Promise<Task | null> {
       // @ts-ignore
       .is('worker_id', null)
       .order('created_at', { ascending: true })
-      .limit(1)
-      .single();
+      .limit(1);
 
     if (error) {
       if (error.code === 'PGRST116') {
@@ -51,16 +49,16 @@ export async function processNextTask(): Promise<Task | null> {
       throw error;
     }
 
-    if (!data) {
+    if (!data || data.length === 0) {
       return null;
     }
 
-    // Transform snake_case to camelCase
+    const row = data[0]; // Take the first (and only) row
     return {
-      id: data.id,
-      taskId: data.task_id,
-      state: data.state,
-      context: data.context,
+      id: row.id,
+      taskId: row.task_id,
+      state: row.state,
+      context: row.context,
     };
   } catch (error) {
     console.error('Error getting next task:', error);

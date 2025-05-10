@@ -20,6 +20,7 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 AS $$
 BEGIN
+    set statement_timeout TO '30s';
     RETURN QUERY
     SELECT
         e.id,
