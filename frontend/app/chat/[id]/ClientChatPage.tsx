@@ -366,18 +366,224 @@ export default function ClientChatPage({
             {convertToUIMessages(messages).map((m, index) => (
               <React.Fragment key={m.id}>
                 {m.role === 'user' && index === 0 ? (
-                  <div className="mb-6 px-4">
-                    <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-2">
-                      Initial Query
-                    </h3>
+                  <div className="mb-6">
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
-                      {m.parts.map((part, partIndex) =>
-                        part.type === 'text' ? (
-                          <p key={partIndex} className="text-gray-200">
-                            {part.text}
-                          </p>
-                        ) : null,
-                      )}
+                      <div className="mb-4">
+                        <p className="font-bold mb-2 text-gray-200">
+                          Initial Query
+                        </p>
+                        <div className="bg-zinc-800/50 rounded-lg p-3">
+                          {m.parts.map((part, partIndex) =>
+                            part.type === 'text' ? (
+                              <p key={partIndex} className="text-gray-200">
+                                {part.text}
+                              </p>
+                            ) : null,
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="border-t border-zinc-800 pt-4">
+                        <p className="font-bold mb-2 text-gray-200">
+                          Research Progress
+                        </p>
+                        <div className="relative pl-6">
+                          <div className="absolute top-0 bottom-0 left-[5px] w-0.25 bg-gray-700" />
+                          {steps.map((step) => (
+                            <div key={step} className="relative mb-4">
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center">
+                                  {stepStates[step]?.status === 'loading' && (
+                                    <Loader2 className="w-3 h-3 text-gray-400 animate-spin" />
+                                  )}
+                                  {stepStates[step]?.status === 'completed' && (
+                                    <CheckCircle2 className="w-3 h-3 text-green-500" />
+                                  )}
+                                  {stepStates[step]?.status === 'error' && (
+                                    <XCircle className="w-3 h-3 text-red-500" />
+                                  )}
+                                </div>
+                                <div className="flex items-center">
+                                  <div className="absolute left-[-22.5px] w-2 h-2 rounded-full bg-gray-800 border border-gray-700 z-10" />
+                                  {step ===
+                                  'Processing and embedding papers' ? (
+                                    <div className="flex flex-col">
+                                      <span className="text-sm text-gray-200">
+                                        {step}
+                                      </span>
+                                      <div
+                                        className={`overflow-hidden transition-all duration-300 ease-in-out ${task?.state === 'processPaper' ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'}`}
+                                      >
+                                        <div className="flex flex-col gap-1">
+                                          <div className="flex items-center justify-between text-xs text-gray-400">
+                                            <span>Processing articles...</span>
+                                            <span className="text-gray-300">
+                                              {stepStates[step]?.data
+                                                ?.processed_articles || 0}{' '}
+                                              /{' '}
+                                              {stepStates[step]?.data
+                                                ?.total_articles || 0}
+                                            </span>
+                                          </div>
+                                          <Progress
+                                            value={
+                                              ((stepStates[step]?.data
+                                                ?.processed_articles || 0) /
+                                                (stepStates[step]?.data
+                                                  ?.total_articles || 1)) *
+                                              100
+                                            }
+                                            className="h-2 w-full bg-zinc-800"
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() =>
+                                        setActiveStep(
+                                          activeStep === step ? null : step,
+                                        )
+                                      }
+                                      className="text-sm text-gray-200 hover:text-gray-400 transition-colors flex items-center cursor-pointer"
+                                    >
+                                      {step}
+                                      <div className="relative w-4 h-4 ml-2">
+                                        <ChevronRight
+                                          className={`absolute w-4 h-4 transition-all duration-200 ${
+                                            activeStep === step
+                                              ? 'rotate-90 opacity-0'
+                                              : 'rotate-0 opacity-100'
+                                          }`}
+                                        />
+                                        <ChevronDown
+                                          className={`absolute w-4 h-4 transition-all duration-200 ${
+                                            activeStep === step
+                                              ? 'rotate-0 opacity-100'
+                                              : '-rotate-90 opacity-0'
+                                          }`}
+                                        />
+                                      </div>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              {activeStep === step &&
+                                stepStates[step]?.data && (
+                                  <div className="p-2 rounded-md text-xs text-gray-400 bg-zinc-800/50 mt-2">
+                                    {step === 'Extracting key terms' &&
+                                      stepStates[step]?.data?.keyTerms && (
+                                        <div className="">
+                                          <div className="flex flex-wrap gap-2">
+                                            {stepStates[step].data.keyTerms.map(
+                                              (term: string, index: number) => (
+                                                <span
+                                                  key={index}
+                                                  className="px-2 py-1 bg-zinc-900 rounded-md"
+                                                >
+                                                  {term}
+                                                </span>
+                                              ),
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+                                    {step === 'Fetching relevant articles' &&
+                                      stepStates[step]?.data && (
+                                        <div className="space-y-4">
+                                          {stepStates[step].data.map(
+                                            (resource: any, index: number) => (
+                                              <div
+                                                key={index}
+                                                className="border-b border-zinc-800 last:border-b-0 pb-4 last:pb-0"
+                                              >
+                                                <div className="font-medium text-gray-300 mb-1">
+                                                  [{resource.number}]{' '}
+                                                  {resource.resources.title}
+                                                </div>
+                                                <div className="text-gray-400 text-xs mb-1">
+                                                  {resource.resources.authors.join(
+                                                    ', ',
+                                                  )}
+                                                </div>
+                                                <div className="text-gray-400 text-xs mb-1">
+                                                  {resource.resources.journal} •{' '}
+                                                  {resource.resources.pub_date}
+                                                </div>
+                                                <a
+                                                  href={
+                                                    resource.resources
+                                                      .full_text_url
+                                                  }
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="text-blue-400 hover:text-blue-300 text-xs"
+                                                >
+                                                  View Full Text
+                                                </a>
+                                              </div>
+                                            ),
+                                          )}
+                                        </div>
+                                      )}
+                                    {step ===
+                                      'Processing and embedding papers' && (
+                                      <div className="text-gray-400 space-y-2">
+                                        <div className="flex items-center justify-between text-xs">
+                                          <span>Processing articles...</span>
+                                          <span className="text-gray-300">
+                                            {stepStates[step]?.data
+                                              ?.processed_articles || 0}{' '}
+                                            /{' '}
+                                            {stepStates[step]?.data
+                                              ?.total_articles || 0}
+                                          </span>
+                                        </div>
+                                        <Progress
+                                          value={
+                                            ((stepStates[step]?.data
+                                              ?.processed_articles || 0) /
+                                              (stepStates[step]?.data
+                                                ?.total_articles || 1)) *
+                                            100
+                                          }
+                                          className="h-2 bg-zinc-800"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              {activeStep === step &&
+                                stepStates[step]?.status === 'error' && (
+                                  <div className="mt-2 p-3 bg-red-950 rounded-md text-xs text-red-400 border border-red-900">
+                                    Error:{' '}
+                                    {subscriptionError ||
+                                      'Step failed to complete'}
+                                  </div>
+                                )}
+                            </div>
+                          ))}
+                          {typeof task?.processed_articles === 'number' &&
+                            typeof task?.total_articles === 'number' &&
+                            task.processed_articles === task.total_articles &&
+                            task.total_articles > 0 && (
+                              <div className="mt-4 p-4 bg-gradient-to-r from-green-900/40 to-black-900/20 border border-green-900/50 rounded-lg">
+                                <div className="flex items-center gap-2 text-green-400">
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  <span className="font-medium">
+                                    Research Complete
+                                  </span>
+                                </div>
+                                <p className="mt-2 text-sm text-gray-300">
+                                  Your research materials are ready! You can now
+                                  ask questions about the papers, request
+                                  summaries, or explore specific topics in
+                                  detail.
+                                </p>
+                              </div>
+                            )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -408,204 +614,6 @@ export default function ClientChatPage({
                             );
                             return <div key={index}>{parts}</div>;
                           })}
-                    </div>
-                  </div>
-                )}
-                {/* Show task progress after first user message */}
-                {m.role === 'user' && index === 0 && (
-                  <div className="mb-6 px-4">
-                    <h3 className="mb-3 text-sm font-semibold text-gray-300 uppercase tracking-wide">
-                      Research Progress
-                    </h3>
-                    <div className="relative pl-6">
-                      <div className="absolute top-0 bottom-0 left-[5px] w-0.25 bg-gray-700" />
-                      {steps.map((step) => (
-                        <div key={step} className="relative mb-4">
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center">
-                              {stepStates[step]?.status === 'loading' && (
-                                <Loader2 className="w-3 h-3 text-gray-400 animate-spin" />
-                              )}
-                              {stepStates[step]?.status === 'completed' && (
-                                <CheckCircle2 className="w-3 h-3 text-green-500" />
-                              )}
-                              {stepStates[step]?.status === 'error' && (
-                                <XCircle className="w-3 h-3 text-red-500" />
-                              )}
-                            </div>
-                            <div className="flex items-center">
-                              <div className="absolute left-[-22.5px] w-2 h-2 rounded-full bg-gray-800 border border-gray-700 z-10" />
-                              {step === 'Processing and embedding papers' ? (
-                                <div className="flex flex-col">
-                                  <span className="text-sm text-gray-200">
-                                    {step}
-                                  </span>
-                                  <div
-                                    className={`overflow-hidden transition-all duration-300 ease-in-out ${task?.state === 'processPaper' ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'}`}
-                                  >
-                                    <div className="flex flex-col gap-1">
-                                      <div className="flex items-center justify-between text-xs text-gray-400">
-                                        <span>Processing articles...</span>
-                                        <span className="text-gray-300">
-                                          {stepStates[step]?.data
-                                            ?.processed_articles || 0}{' '}
-                                          /{' '}
-                                          {stepStates[step]?.data
-                                            ?.total_articles || 0}
-                                        </span>
-                                      </div>
-                                      <Progress
-                                        value={
-                                          ((stepStates[step]?.data
-                                            ?.processed_articles || 0) /
-                                            (stepStates[step]?.data
-                                              ?.total_articles || 1)) *
-                                          100
-                                        }
-                                        className="h-2 w-full bg-zinc-800"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() =>
-                                    setActiveStep(
-                                      activeStep === step ? null : step,
-                                    )
-                                  }
-                                  className="text-sm text-gray-200 hover:text-gray-400 transition-colors flex items-center cursor-pointer"
-                                >
-                                  {step}
-                                  <div className="relative w-4 h-4 ml-2">
-                                    <ChevronRight
-                                      className={`absolute w-4 h-4 transition-all duration-200 ${
-                                        activeStep === step
-                                          ? 'rotate-90 opacity-0'
-                                          : 'rotate-0 opacity-100'
-                                      }`}
-                                    />
-                                    <ChevronDown
-                                      className={`absolute w-4 h-4 transition-all duration-200 ${
-                                        activeStep === step
-                                          ? 'rotate-0 opacity-100'
-                                          : '-rotate-90 opacity-0'
-                                      }`}
-                                    />
-                                  </div>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                          {activeStep === step && stepStates[step]?.data && (
-                            <div className="p-2 rounded-md text-xs text-gray-400 ">
-                              {step === 'Extracting key terms' &&
-                                stepStates[step]?.data?.keyTerms && (
-                                  <div className="">
-                                    <div className="flex flex-wrap gap-2">
-                                      {stepStates[step].data.keyTerms.map(
-                                        (term: string, index: number) => (
-                                          <span
-                                            key={index}
-                                            className="px-2 py-1 bg-zinc-800 rounded-md"
-                                          >
-                                            {term}
-                                          </span>
-                                        ),
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                              {step === 'Fetching relevant articles' &&
-                                stepStates[step]?.data && (
-                                  <div className="space-y-4">
-                                    {stepStates[step].data.map(
-                                      (resource: any, index: number) => (
-                                        <div
-                                          key={index}
-                                          className="border-b border-zinc-800 last:border-b-0 pb-4 last:pb-0"
-                                        >
-                                          <div className="font-medium text-gray-300 mb-1">
-                                            [{resource.number}]{' '}
-                                            {resource.resources.title}
-                                          </div>
-                                          <div className="text-gray-400 text-xs mb-1">
-                                            {resource.resources.authors.join(
-                                              ', ',
-                                            )}
-                                          </div>
-                                          <div className="text-gray-400 text-xs mb-1">
-                                            {resource.resources.journal} •{' '}
-                                            {resource.resources.pub_date}
-                                          </div>
-                                          <a
-                                            href={
-                                              resource.resources.full_text_url
-                                            }
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-blue-400 hover:text-blue-300 text-xs"
-                                          >
-                                            View Full Text
-                                          </a>
-                                        </div>
-                                      ),
-                                    )}
-                                  </div>
-                                )}
-                              {step === 'Processing and embedding papers' && (
-                                <div className="text-gray-400 space-y-2">
-                                  <div className="flex items-center justify-between text-xs">
-                                    <span>Processing articles...</span>
-                                    <span className="text-gray-300">
-                                      {stepStates[step]?.data
-                                        ?.processed_articles || 0}{' '}
-                                      /{' '}
-                                      {stepStates[step]?.data?.total_articles ||
-                                        0}
-                                    </span>
-                                  </div>
-                                  <Progress
-                                    value={
-                                      ((stepStates[step]?.data
-                                        ?.processed_articles || 0) /
-                                        (stepStates[step]?.data
-                                          ?.total_articles || 1)) *
-                                      100
-                                    }
-                                    className="h-2 bg-zinc-800"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {activeStep === step &&
-                            stepStates[step]?.status === 'error' && (
-                              <div className="mt-2 p-3 bg-red-950 rounded-md text-xs text-red-400 border border-red-900">
-                                Error:{' '}
-                                {subscriptionError || 'Step failed to complete'}
-                              </div>
-                            )}
-                        </div>
-                      ))}
-                      {typeof task?.processed_articles === 'number' &&
-                        typeof task?.total_articles === 'number' &&
-                        task.processed_articles === task.total_articles &&
-                        task.total_articles > 0 && (
-                          <div className="mt-4 p-4 bg-gradient-to-r from-green-900/40 to-black-900/20 border border-green-900/50 rounded-lg">
-                            <div className="flex items-center gap-2 text-green-400">
-                              <CheckCircle2 className="w-4 h-4" />
-                              <span className="font-medium">
-                                Research Complete
-                              </span>
-                            </div>
-                            <p className="mt-2 text-sm text-gray-300">
-                              Your research materials are ready! You can now ask
-                              questions about the papers, request summaries, or
-                              explore specific topics in detail.
-                            </p>
-                          </div>
-                        )}
                     </div>
                   </div>
                 )}

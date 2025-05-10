@@ -1,9 +1,15 @@
 'use client';
 
 import { useAuth } from '@/providers/AuthProvider';
-import { Search } from 'lucide-react';
+import { ChevronRight, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+
+const SUGGESTED_QUERIES = [
+  'What are the effects of magnesium on sleep?',
+  'How does exercise impact mental health?',
+  'What is the role of gut microbiome in immunity?',
+] as const;
 
 export default function Research() {
   const [error, setError] = useState<string | null>(null);
@@ -75,40 +81,22 @@ export default function Research() {
                 </button>
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleSuggestedQuery(
-                      'What are the effects of magnesium on sleep?',
-                    )
-                  }
-                  className="cursor-pointer rounded-lg bg-zinc-800/80 backdrop-blur-sm p-3 text-sm text-zinc-300 transition-colors hover:bg-zinc-700/50 disabled:cursor-auto disabled:bg-zinc-600/30 disabled:text-zinc-500"
-                >
-                  What are the effects of magnesium on sleep?
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleSuggestedQuery(
-                      'How does exercise impact mental health?',
-                    )
-                  }
-                  className="cursor-pointer rounded-lg bg-zinc-800/80 backdrop-blur-sm p-3 text-sm text-zinc-300 transition-colors hover:bg-zinc-700/50 disabled:cursor-auto disabled:bg-zinc-600/30 disabled:text-zinc-500"
-                >
-                  How does exercise impact mental health?
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleSuggestedQuery(
-                      'What is the role of gut microbiome in immunity?',
-                    )
-                  }
-                  className="cursor-pointer rounded-lg bg-zinc-800/80 backdrop-blur-sm p-3 text-sm text-zinc-300 transition-colors hover:bg-zinc-700/50 disabled:cursor-auto disabled:bg-zinc-600/30 disabled:text-zinc-500"
-                >
-                  What is the role of gut microbiome in immunity?
-                </button>
+              <div className="mt-4 space-y-0">
+                {SUGGESTED_QUERIES.map((query, index) => (
+                  <div key={query} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => handleSuggestedQuery(query)}
+                      className="w-full flex items-center justify-between px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-700/50 hover:cursor-pointer transition-colors rounded-lg group"
+                    >
+                      <span>{query}</span>
+                      <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 text-zinc-500 group-hover:text-zinc-300 transition-all" />
+                    </button>
+                    {index < SUGGESTED_QUERIES.length - 1 && (
+                      <div className="absolute bottom-0 left-0 right-0 h-px bg-zinc-700/50" />
+                    )}
+                  </div>
+                ))}
               </div>
             </form>
 

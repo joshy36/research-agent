@@ -88,7 +88,16 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-roboto-slab), serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-roboto), sans-serif;
 }
 
 .dark {
@@ -143,4 +152,12 @@ body {
 .custom-scrollbar-sidebar {
   scrollbar-width: thin;
   scrollbar-color: #454545 #171717;
+}
+
+.font-roboto {
+  font-family: var(--font-roboto), sans-serif;
+}
+
+.font-roboto-slab {
+  font-family: var(--font-roboto-slab), serif;
 }
