@@ -94,7 +94,7 @@ export default function Research() {
               )}
             </div>
             <p className="text-zinc-400">
-              Ask any research question and I'll help you explore the topic
+              Ask any research question and I&apos;ll help you explore the topic
             </p>
           </div>
 
