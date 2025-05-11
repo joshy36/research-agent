@@ -1,10 +1,12 @@
 'use client';
 
+import { LoginAlert } from '@/components/login-alert';
 import { User } from '@supabase/supabase-js';
-import { createContext, ReactNode, useContext } from 'react';
+import { createContext, ReactNode, useContext, useState } from 'react';
 
 interface AuthContextType {
   user: User | null;
+  showLoginDialog: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,8 +18,17 @@ export function AuthProvider({
   children: ReactNode;
   user: User | null;
 }) {
+  const [showLogin, setShowLogin] = useState(false);
+
+  const showLoginDialog = () => {
+    setShowLogin(true);
+  };
+
   return (
-    <AuthContext.Provider value={{ user }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, showLoginDialog }}>
+      {children}
+      <LoginAlert open={showLogin} onOpenChange={setShowLogin} />
+    </AuthContext.Provider>
   );
 }
 
