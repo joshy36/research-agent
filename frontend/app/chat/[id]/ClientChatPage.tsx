@@ -1,6 +1,6 @@
 'use client';
 
-import { wrapReferencesWithHoverCards } from '@/components/references';
+import { ReferencesWithHoverCards } from '@/components/references';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/providers/supabase';
 import { useChat } from '@ai-sdk/react';
@@ -647,11 +647,14 @@ export default function ClientChatPage({
                             if (part.type !== 'text') return null;
                             const { message, references } =
                               splitMessageAndReferences(part.text);
-                            const parts = wrapReferencesWithHoverCards(
-                              message,
-                              references,
+                            return (
+                              <div key={index}>
+                                <ReferencesWithHoverCards
+                                  text={message}
+                                  references={references}
+                                />
+                              </div>
                             );
-                            return <div key={index}>{parts}</div>;
                           })}
                     </div>
                   </div>

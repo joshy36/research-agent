@@ -110,11 +110,14 @@ function ReferenceContent({
   );
 }
 
-// Function to wrap reference numbers with hover cards or drawer
-export function wrapReferencesWithHoverCards(
-  text: string,
-  references: Reference[],
-) {
+// Component to wrap reference numbers with hover cards or drawer
+export function ReferencesWithHoverCards({
+  text,
+  references,
+}: {
+  text: string;
+  references: Reference[];
+}) {
   const isMobile = useIsMobile();
 
   // First, find all reference numbers in the text
@@ -204,7 +207,7 @@ export function wrapReferencesWithHoverCards(
     parts.push(text.slice(lastIndex));
   }
 
-  return parts;
+  return <>{parts}</>;
 }
 
 export function References({ references }: ReferencesProps) {
