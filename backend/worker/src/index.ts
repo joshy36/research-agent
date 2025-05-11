@@ -23,6 +23,7 @@ async function processTask(task: {
 }) {
   try {
     const context = task.context;
+    console.log(`Processing task ${task.taskId} in state ${context.state}`);
 
     switch (context.state) {
       case 'parseQuery': {
@@ -247,7 +248,37 @@ async function processTask(task: {
     }
   } catch (error) {
     console.error('Error processing task:', error);
-    await releaseTaskLock(task.taskId);
+    try {
+      // Attempt to release the task lock
+      await releaseTaskLock(task.taskId);
+
+      // If the error is recoverable, requeue the task
+      if (error instanceof Error && !error.message.includes('fatal')) {
+        console.log(`Requeueing task ${task.taskId} due to recoverable error`);
+        await sendToQueue({
+          ...task.context,
+          state: task.context.state, // Keep the same state
+        });
+      } else {
+        // For fatal errors, mark the task as failed
+        console.error(`Task ${task.taskId} failed with fatal error:`, error);
+        await supabase
+          .from('tasks')
+          .update({
+            state: 'Failed',
+            error_message:
+              error instanceof Error ? error.message : 'Unknown error',
+          })
+          .eq('task_id', task.taskId);
+      }
+    } catch (releaseError) {
+      console.error('Failed to handle task error:', releaseError);
+      // If we can't even release the lock, we should alert about this
+      console.error(
+        'CRITICAL: Task lock could not be released for task:',
+        task.taskId
+      );
+    }
   }
 }
 

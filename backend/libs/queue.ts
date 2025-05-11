@@ -11,6 +11,20 @@ interface Task {
   context: any;
 }
 
+const LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+async function releaseStaleLocks() {
+  const { error } = await supabase
+    .from('queue')
+    .update({ worker_id: null })
+    .lt('updated_at', new Date(Date.now() - LOCK_TIMEOUT_MS).toISOString())
+    .not('worker_id', 'is', null);
+
+  if (error) {
+    console.error('Error releasing stale locks:', error);
+  }
+}
+
 export async function sendToQueue(context: Context) {
   console.log(
     `Sending task ${context.taskId} to queue with state: ${context.state}`
@@ -32,9 +46,15 @@ export async function sendToQueue(context: Context) {
 
 export async function processNextTask(): Promise<Task | null> {
   try {
+    // First, release any stale locks
+    await releaseStaleLocks();
+
     const { data, error } = await supabase
       .from('queue')
-      .update({ worker_id: WORKER_ID })
+      .update({
+        worker_id: WORKER_ID,
+        updated_at: new Date().toISOString(),
+      })
       .select('id, task_id, state, context')
       // @ts-ignore
       .is('worker_id', null)
