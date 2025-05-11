@@ -30,7 +30,7 @@ export function NavMain({
             <SidebarMenuButton isActive={pathname === item.url} asChild>
               <Link href={item.url}>
                 {item.icon && <item.icon />}
-                <span>{item.title}</span>
+                <span className="truncate">{item.title}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

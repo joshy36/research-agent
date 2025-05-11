@@ -72,8 +72,7 @@ function ChatList({ pathname }: { pathname: string }) {
     () =>
       chats.map((chat) => ({
         id: chat.id,
-        title:
-          chat.title.length > 30 ? `${chat.title.slice(0, 25)}...` : chat.title,
+        title: chat.title,
         url: chat.url,
         isActive: pathname === chat.url,
       })),
@@ -98,7 +97,6 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
           New Chat
         </Link>
       </SidebarHeader>
-      <div className="h-px bg-border" />
       <SidebarContent>
         <ChatList pathname={pathname} />
       </SidebarContent>

@@ -1,10 +1,24 @@
 import {
+  Drawer,
+  DrawerContent,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer';
+import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
-import { ChevronDown, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import {
+  BookOpen,
+  Calendar,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  FileText,
+  Users,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface Reference {
   authors: string;
@@ -18,11 +32,91 @@ interface ReferencesProps {
   references: Reference[];
 }
 
-// Function to wrap reference numbers with hover cards
+// Mobile detection hook
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      // Check both window width and user agent for better mobile detection
+      const isMobileDevice =
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent,
+        );
+      const isMobileWidth = window.innerWidth < 768;
+      setIsMobile(isMobileDevice || isMobileWidth);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  return isMobile;
+}
+
+// Shared reference content component
+function ReferenceContent({
+  references,
+  refNumbers,
+}: {
+  references: Reference[];
+  refNumbers: number[];
+}) {
+  return (
+    <div className="space-y-4">
+      {refNumbers.map((refNum, idx) => {
+        const reference = references[refNum - 1];
+        return (
+          <div
+            key={idx}
+            className={idx > 0 ? 'pt-4 border-t border-zinc-800' : ''}
+          >
+            <div className="flex items-start gap-2 mb-2">
+              <div className="mt-1">
+                <FileText className="w-4 h-4 text-zinc-500" />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-gray-200 text-sm">
+                  [{refNum}] {reference.title}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-gray-400 text-xs mb-1 pl-6">
+              <Users className="w-3 h-3 text-zinc-500 flex-shrink-0" />
+              <span className="truncate">{reference.authors}</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-400 text-xs mb-2 pl-6">
+              <BookOpen className="w-3 h-3 text-zinc-500" />
+              {reference.journal} •{' '}
+              <Calendar className="w-3 h-3 text-zinc-500" />
+              {reference.year}
+            </div>
+            <div className="pl-6">
+              <a
+                href={`https://pubmed.ncbi.nlm.nih.gov/${reference.pmid}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 text-xs transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+                View on PubMed
+              </a>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Function to wrap reference numbers with hover cards or drawer
 export function wrapReferencesWithHoverCards(
   text: string,
   references: Reference[],
 ) {
+  const isMobile = useIsMobile();
+
   // First, find all reference numbers in the text
   const refRegex = /\[(\d+(?:,\s*\d+)*)\]/g;
   let lastIndex = 0;
@@ -42,54 +136,61 @@ export function wrapReferencesWithHoverCards(
     );
 
     if (validRefs.length > 0) {
-      // Add the hover card wrapped reference
-      const hoverCard = (
-        <HoverCard key={match.index}>
-          <HoverCardTrigger asChild>
-            <span>
-              {'['}
-              <span className="text-blue-400 hover:text-blue-300 cursor-pointer">
-                {match[1]}
+      if (isMobile) {
+        // Use Drawer for mobile
+        const drawer = (
+          <Drawer key={match.index}>
+            <DrawerTrigger asChild>
+              <button className="inline-flex items-center bg-transparent border-none p-0 cursor-pointer">
+                {'['}
+                <span className="text-blue-400 hover:text-blue-300 select-none">
+                  {match[1]}
+                </span>
+                {']'}
+              </button>
+            </DrawerTrigger>
+            <DrawerContent className="h-[80vh] bg-zinc-900 border-t border-zinc-800">
+              <div className="p-4">
+                <DrawerTitle className="text-lg font-semibold text-white mb-4">
+                  References
+                </DrawerTitle>
+                <ReferenceContent
+                  references={references}
+                  refNumbers={validRefs}
+                />
+              </div>
+            </DrawerContent>
+          </Drawer>
+        );
+        parts.push(drawer);
+      } else {
+        // Use HoverCard for desktop
+        const hoverCard = (
+          <HoverCard key={match.index}>
+            <HoverCardTrigger asChild>
+              <span className="inline-flex items-center">
+                {'['}
+                <span className="text-blue-400 hover:text-blue-300 cursor-pointer select-none">
+                  {match[1]}
+                </span>
+                {']'}
               </span>
-              {']'}
-            </span>
-          </HoverCardTrigger>
-          <HoverCardContent
-            className="w-80 bg-zinc-900 border border-zinc-800 shadow-lg"
-            sideOffset={5}
-            align="start"
-          >
-            <div className="space-y-3">
-              {validRefs.map((refNum, idx) => {
-                const reference = references[refNum - 1];
-                return (
-                  <div
-                    key={idx}
-                    className={idx > 0 ? 'pt-2 border-t border-zinc-800' : ''}
-                  >
-                    <h4 className="text-sm font-semibold text-white">
-                      {reference.title}
-                    </h4>
-                    <p className="text-sm text-gray-400">{reference.authors}</p>
-                    <p className="text-xs text-gray-500">
-                      {reference.journal} ({reference.year})
-                    </p>
-                    <a
-                      href={`https://pubmed.ncbi.nlm.nih.gov/${reference.pmid}/`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-400 hover:text-blue-300"
-                    >
-                      View on PubMed
-                    </a>
-                  </div>
-                );
-              })}
-            </div>
-          </HoverCardContent>
-        </HoverCard>
-      );
-      parts.push(hoverCard);
+            </HoverCardTrigger>
+            <HoverCardContent
+              className="w-96 bg-zinc-900 border border-zinc-800 shadow-lg"
+              sideOffset={5}
+              align="start"
+              forceMount
+            >
+              <ReferenceContent
+                references={references}
+                refNumbers={validRefs}
+              />
+            </HoverCardContent>
+          </HoverCard>
+        );
+        parts.push(hoverCard);
+      }
     } else {
       // If no valid references found, just add the number as is
       parts.push(match[0]);

@@ -58,9 +58,39 @@ function SidebarProvider({
 }) {
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
-
+  const [mounted, setMounted] = React.useState(false);
   const [_open, _setOpen] = React.useState(defaultOpen);
   const open = openProp ?? _open;
+
+  // Handle initial state and persistence
+  React.useEffect(() => {
+    setMounted(true);
+    // Try localStorage first
+    const storedState = localStorage.getItem(SIDEBAR_COOKIE_NAME);
+    if (storedState !== null) {
+      const isOpen = storedState === 'true';
+      if (setOpenProp) {
+        setOpenProp(isOpen);
+      } else {
+        _setOpen(isOpen);
+      }
+    } else {
+      // Fallback to cookie
+      const cookies = document.cookie.split(';');
+      const sidebarCookie = cookies.find((cookie) =>
+        cookie.trim().startsWith(`${SIDEBAR_COOKIE_NAME}=`),
+      );
+      if (sidebarCookie) {
+        const isOpen = sidebarCookie.split('=')[1] === 'true';
+        if (setOpenProp) {
+          setOpenProp(isOpen);
+        } else {
+          _setOpen(isOpen);
+        }
+      }
+    }
+  }, [setOpenProp]);
+
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === 'function' ? value(open) : value;
@@ -69,6 +99,8 @@ function SidebarProvider({
       } else {
         _setOpen(openState);
       }
+      // Save to both localStorage and cookie
+      localStorage.setItem(SIDEBAR_COOKIE_NAME, String(openState));
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
     },
     [setOpenProp, open],
@@ -77,17 +109,6 @@ function SidebarProvider({
   const toggleSidebar = React.useCallback(() => {
     return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
   }, [isMobile, setOpen, setOpenMobile]);
-
-  // React.useEffect(() => {
-  //   const handleKeyDown = (event: KeyboardEvent) => {
-  //     if (event.metaKey || event.ctrlKey) {
-  //       event.preventDefault();
-  //       toggleSidebar();
-  //     }
-  //   };
-  //   window.addEventListener('keydown', handleKeyDown);
-  //   return () => window.removeEventListener('keydown', handleKeyDown);
-  // }, [toggleSidebar]);
 
   const state = open ? 'expanded' : 'collapsed';
 
@@ -121,7 +142,7 @@ function SidebarProvider({
           )}
           {...props}
         >
-          {children}
+          {mounted ? children : null}
         </div>
       </TooltipProvider>
     </SidebarContext.Provider>
@@ -445,7 +466,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<'li'>) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  'peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground',
+  'peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground',
   {
     variants: {
       variant: {

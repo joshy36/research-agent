@@ -51,8 +51,8 @@ export default function Research() {
     <div className="flex flex-col h-full">
       <div className="max-w-3xl mx-auto flex flex-col h-full w-full px-4">
         <div className="flex-1 flex-col items-center justify-center">
-          <div className="pt-64 py-8">
-            <h1 className="text-3xl font-bold text-white text-center pb-6">
+          <div className="pt-16 md:pt-64 py-4 md:py-8">
+            <h1 className="text-2xl md:text-3xl font-bold text-white text-center pb-4 md:pb-6">
               What would you like to research?
             </h1>
 
@@ -70,12 +70,12 @@ export default function Research() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Enter research query (e.g., 'What are the effects of magnesium on sleep?')"
-                  className="w-full rounded-lg bg-zinc-800/80 backdrop-blur-sm pl-4 pr-12 py-3 text-white placeholder:text-zinc-400 border border-zinc-700/50 focus:outline-none focus:border-zinc-600"
+                  className="w-full rounded-lg bg-zinc-800/80 backdrop-blur-sm pl-4 pr-12 py-3.5 md:py-3 text-white placeholder:text-zinc-400 border border-zinc-700/50 focus:outline-none focus:border-zinc-600 text-base"
                 />
                 <button
                   type="submit"
                   disabled={!input.trim()}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md cursor-pointer p-2 text-zinc-400 hover:text-white hover:bg-zinc-700/50 disabled:opacity-30 disabled:hover:text-zinc-400 disabled:hover:bg-transparent disabled:cursor-auto transition-colors border border-zinc-700/50"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md cursor-pointer p-2.5 md:p-2 text-zinc-400 hover:text-white hover:bg-zinc-700/50 disabled:opacity-30 disabled:hover:text-zinc-400 disabled:hover:bg-transparent disabled:cursor-auto transition-colors border border-zinc-700/50"
                 >
                   <Search className="h-5 w-5" />
                 </button>
@@ -87,10 +87,10 @@ export default function Research() {
                     <button
                       type="button"
                       onClick={() => handleSuggestedQuery(query)}
-                      className="w-full flex items-center justify-between px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-700/50 hover:cursor-pointer transition-colors rounded-lg group"
+                      className="w-full flex items-center justify-between px-4 py-3.5 md:py-3 text-sm text-zinc-300 hover:bg-zinc-700/50 active:bg-zinc-700/70 hover:cursor-pointer transition-colors rounded-lg group"
                     >
-                      <span>{query}</span>
-                      <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 text-zinc-500 group-hover:text-zinc-300 transition-all" />
+                      <span className="text-left">{query}</span>
+                      <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 text-zinc-500 group-hover:text-zinc-300 transition-all flex-shrink-0 ml-2" />
                     </button>
                     {index < SUGGESTED_QUERIES.length - 1 && (
                       <div className="absolute bottom-0 left-0 right-0 h-px bg-zinc-700/50" />

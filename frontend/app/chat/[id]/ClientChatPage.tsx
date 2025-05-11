@@ -6,10 +6,15 @@ import { supabase } from '@/providers/supabase';
 import { useChat } from '@ai-sdk/react';
 import { UIMessage } from 'ai';
 import {
+  BookOpen,
+  Calendar,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
+  FileText,
   Loader2,
+  Users,
   XCircle,
 } from 'lucide-react';
 import React, {
@@ -358,20 +363,27 @@ export default function ClientChatPage({
   return (
     <div className="h-full">
       {/* Main container for both content and input */}
-      <div className="max-w-3xl mx-auto flex flex-col h-full w-full">
+      <div className="h-full w-full flex flex-col">
         {/* Scrollable content area with padding for the fixed input */}
         <div className="flex-1 overflow-y-auto custom-scrollbar pb-4">
           {/* Messages Section */}
-          <div className="space-y-4 px-4 flex-1">
+          <div className="max-w-3xl mx-auto space-y-4 px-4 flex-1">
             {convertToUIMessages(messages).map((m, index) => (
               <React.Fragment key={m.id}>
                 {m.role === 'user' && index === 0 ? (
                   <div className="mb-6">
                     <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
                       <div className="mb-4">
-                        <p className="font-bold mb-2 text-gray-200">
-                          Initial Query
-                        </p>
+                        <div className="flex justify-between items-center mb-2">
+                          <p className="font-bold text-gray-200">
+                            Initial Query
+                          </p>
+                          {task?.created_at && (
+                            <p className="text-sm text-gray-400">
+                              {new Date(task.created_at).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
                         <div className="bg-zinc-800/50 rounded-lg p-3">
                           {m.parts.map((part, partIndex) =>
                             part.type === 'text' ? (
@@ -490,40 +502,67 @@ export default function ClientChatPage({
                                       )}
                                     {step === 'Fetching relevant articles' &&
                                       stepStates[step]?.data && (
-                                        <div className="space-y-4">
-                                          {stepStates[step].data.map(
-                                            (resource: any, index: number) => (
-                                              <div
-                                                key={index}
-                                                className="border-b border-zinc-800 last:border-b-0 pb-4 last:pb-0"
-                                              >
-                                                <div className="font-medium text-gray-300 mb-1">
-                                                  [{resource.number}]{' '}
-                                                  {resource.resources.title}
-                                                </div>
-                                                <div className="text-gray-400 text-xs mb-1">
-                                                  {resource.resources.authors.join(
-                                                    ', ',
-                                                  )}
-                                                </div>
-                                                <div className="text-gray-400 text-xs mb-1">
-                                                  {resource.resources.journal} •{' '}
-                                                  {resource.resources.pub_date}
-                                                </div>
-                                                <a
-                                                  href={
-                                                    resource.resources
-                                                      .full_text_url
-                                                  }
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="text-blue-400 hover:text-blue-300 text-xs"
+                                        <div className="space-y-4 p-1">
+                                          {[...stepStates[step].data]
+                                            .sort((a, b) => a.number - b.number)
+                                            .map(
+                                              (
+                                                resource: any,
+                                                index: number,
+                                              ) => (
+                                                <div
+                                                  key={index}
+                                                  className="border-b border-zinc-800 last:border-b-0 pb-2 last:pb-0 px-2"
                                                 >
-                                                  View Full Text
-                                                </a>
-                                              </div>
-                                            ),
-                                          )}
+                                                  <div className="flex items-start gap-2 mb-2">
+                                                    <div className="mt-1">
+                                                      <FileText className="w-4 h-4 text-zinc-500" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                      <div className="font-medium text-gray-200 text-sm">
+                                                        [{resource.number}]{' '}
+                                                        {
+                                                          resource.resources
+                                                            .title
+                                                        }
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                  <div className="flex items-center gap-2 text-gray-400 text-xs mb-1 pl-6">
+                                                    <Users className="w-3 h-3 text-zinc-500 flex-shrink-0" />
+                                                    <span className="truncate">
+                                                      {resource.resources.authors.join(
+                                                        ', ',
+                                                      )}
+                                                    </span>
+                                                  </div>
+                                                  <div className="flex items-center gap-2 text-gray-400 text-xs mb-2 pl-6">
+                                                    <BookOpen className="w-3 h-3 text-zinc-500" />
+                                                    {resource.resources.journal}{' '}
+                                                    •{' '}
+                                                    <Calendar className="w-3 h-3 text-zinc-500" />
+                                                    {
+                                                      resource.resources
+                                                        .pub_date
+                                                    }
+                                                  </div>
+                                                  <div className="pl-6">
+                                                    <a
+                                                      href={
+                                                        resource.resources
+                                                          .full_text_url
+                                                      }
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 text-xs transition-colors"
+                                                    >
+                                                      <ExternalLink className="w-3 h-3" />
+                                                      View Full Text
+                                                    </a>
+                                                  </div>
+                                                </div>
+                                              ),
+                                            )}
                                         </div>
                                       )}
                                     {step ===
@@ -624,9 +663,9 @@ export default function ClientChatPage({
         </div>
 
         {/* Input form */}
-        <div className="w-full">
+        <div className="w-full sticky bottom-0 bg-background">
           <form onSubmit={handleSubmit} className="px-4">
-            <div className="pb-6 p-3 pt-3 bg-zinc-900/80 backdrop-blur-sm rounded-t-xl border-t border-zinc-700">
+            <div className="max-w-3xl mx-auto pb-6 p-3 pt-3 bg-zinc-900/80 backdrop-blur-sm rounded-t-xl border-t border-zinc-700">
               <div className="flex flex-row justify-between">
                 <div className="flex items-center gap-2 text-sm text-zinc-400 mb-4 pl-4">
                   <div
