@@ -1,7 +1,15 @@
 'use client';
 
 import { useAuth } from '@/providers/AuthProvider';
-import { ChevronRight, Search } from 'lucide-react';
+import {
+  BookOpen,
+  ChevronRight,
+  FileText,
+  Info,
+  Lightbulb,
+  Search,
+  X,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -14,6 +22,7 @@ const SUGGESTED_QUERIES = [
 export default function Research() {
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState('');
+  const [showExplainer, setShowExplainer] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
 
@@ -52,9 +61,59 @@ export default function Research() {
       <div className="max-w-3xl mx-auto flex flex-col h-full w-full px-4">
         <div className="flex-1 flex-col items-center justify-center">
           <div className="pt-16 md:pt-64 py-4 md:py-8">
-            <h1 className="text-2xl md:text-3xl font-bold text-white text-center pb-4 md:pb-6">
-              What would you like to research?
-            </h1>
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <h1 className="text-2xl md:text-3xl font-bold text-white text-center">
+                What would you like to research?
+              </h1>
+              <button
+                onClick={() => setShowExplainer(!showExplainer)}
+                className={`p-2 rounded-full transition-all duration-300 cursor-pointer ${
+                  showExplainer
+                    ? 'bg-zinc-700/50 text-white'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-700/50'
+                }`}
+                title="Learn more about this tool"
+              >
+                {showExplainer ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Info className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+
+            {showExplainer && (
+              <div className="max-w-2xl mx-auto mb-8 text-center animate-fadeIn">
+                <div className="bg-zinc-800/50 backdrop-blur-sm border border-zinc-700/50 rounded-xl p-6 shadow-lg relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 pointer-events-none"></div>
+                  <div className="space-y-4 relative">
+                    <p className="text-zinc-300 text-base md:text-lg leading-relaxed">
+                      Discover evidence-based insights from scientific
+                      literature. Our AI analyzes research papers to provide you
+                      with accurate, up-to-date information on any topic.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 justify-center text-sm">
+                      <div className="flex items-center gap-2 bg-blue-500/10 px-4 py-2.5 rounded-lg border border-blue-500/20">
+                        <BookOpen className="h-4 w-4 text-blue-400" />
+                        <span className="text-zinc-300">
+                          Real scientific papers
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-green-500/10 px-4 py-2.5 rounded-lg border border-green-500/20">
+                        <Lightbulb className="h-4 w-4 text-green-400" />
+                        <span className="text-zinc-300">
+                          Evidence-based insights
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-purple-500/10 px-4 py-2.5 rounded-lg border border-purple-500/20">
+                        <FileText className="h-4 w-4 text-purple-400" />
+                        <span className="text-zinc-300">Clear summaries</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <form
               onSubmit={async (e) => {
