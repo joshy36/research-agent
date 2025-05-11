@@ -137,6 +137,7 @@ export default function Research() {
                 name="query"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onClick={() => !user && showLoginDialog()}
                 placeholder="What would you like to research?"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 p-4 pr-12 text-white placeholder:text-zinc-500 focus:border-zinc-600 focus:outline-none"
               />
