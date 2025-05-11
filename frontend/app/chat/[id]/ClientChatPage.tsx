@@ -361,13 +361,13 @@ export default function ClientChatPage({
   }
 
   return (
-    <div className="h-full">
+    <div className="h-full flex flex-col">
       {/* Main container for both content and input */}
-      <div className="h-full w-full flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Scrollable content area with padding for the fixed input */}
         <div className="flex-1 overflow-y-auto custom-scrollbar pb-4">
           {/* Messages Section */}
-          <div className="max-w-3xl mx-auto space-y-4 px-4 flex-1">
+          <div className="max-w-3xl mx-auto space-y-4 px-4">
             {convertToUIMessages(messages).map((m, index) => (
               <React.Fragment key={m.id}>
                 {m.role === 'user' && index === 0 ? (
@@ -666,7 +666,7 @@ export default function ClientChatPage({
         </div>
 
         {/* Input form */}
-        <div className="w-full sticky bottom-0 bg-background">
+        <div className="w-full bg-background">
           <form onSubmit={handleSubmit} className="px-4">
             <div className="max-w-3xl mx-auto pb-6 p-3 pt-3 bg-zinc-900/80 backdrop-blur-sm rounded-t-xl border-t border-zinc-700">
               <div className="flex flex-row justify-between">
