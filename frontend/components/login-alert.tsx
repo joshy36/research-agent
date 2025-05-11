@@ -21,16 +21,33 @@ export function LoginAlert({ open, onOpenChange }: LoginAlertProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Clear error when dialog is closed
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      setError(null);
+    }
+    onOpenChange(newOpen);
+  };
+
   async function handleSubmit(formData: FormData) {
     setError(null);
     setIsLoading(true);
     try {
       if (isSignUp) {
-        await signup(formData);
+        const result = await signup(formData);
+        if (result?.success) {
+          handleOpenChange(false);
+          // Force a hard refresh to ensure the auth state is updated
+          window.location.href = '/';
+        }
       } else {
-        await login(formData);
+        const result = await login(formData);
+        if (result?.success) {
+          handleOpenChange(false);
+          // Force a hard refresh to ensure the auth state is updated
+          window.location.href = '/';
+        }
       }
-      onOpenChange(false);
     } catch (err) {
       if (err instanceof Error) {
         if (err.message.includes('Invalid login credentials')) {
@@ -53,7 +70,7 @@ export function LoginAlert({ open, onOpenChange }: LoginAlertProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px] bg-zinc-800/80 backdrop-blur-sm border-zinc-700">
         <DialogHeader>
           <DialogTitle className="text-2xl text-white">

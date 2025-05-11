@@ -17,12 +17,22 @@ export async function login(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword(data);
 
   if (error) {
-    // Instead of redirecting, we'll throw an error that will be caught by Next.js
     throw new Error(error.message);
   }
 
-  revalidatePath('/', 'layout');
-  redirect('/');
+  // Set the session cookie
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (session) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    revalidatePath('/', 'layout');
+    return { success: true, user };
+  }
+
+  throw new Error('Failed to establish session');
 }
 
 export async function logout() {
@@ -62,5 +72,5 @@ export async function signup(formData: FormData) {
   }
 
   revalidatePath('/', 'layout');
-  redirect('/');
+  return { success: true };
 }

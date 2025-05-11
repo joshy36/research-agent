@@ -99,28 +99,28 @@ export default function Research() {
           </div>
 
           {showExplainer && (
-            <div className="mb-6 rounded-lg border border-zinc-700 bg-zinc-800/50 p-4">
-              <div className="flex items-center gap-2 text-white">
-                <Info className="h-5 w-5" />
-                <h2 className="text-lg font-semibold">How it works</h2>
+            <div className="mb-4 rounded-lg border border-zinc-700 bg-zinc-800/50 p-3">
+              <div className="flex items-center gap-1.5 text-white">
+                <Info className="h-4 w-4" />
+                <h2 className="text-base font-medium">How it works</h2>
               </div>
-              <div className="mt-4 grid gap-4 text-zinc-400">
-                <div className="flex items-start gap-2">
-                  <Search className="mt-1 h-5 w-5 flex-shrink-0" />
+              <div className="mt-2 grid gap-2 text-sm text-zinc-400">
+                <div className="flex items-start gap-1.5">
+                  <Search className="mt-0.5 h-4 w-4 flex-shrink-0" />
                   <p>
-                    I'll search through scientific literature to find relevant
-                    information about your topic
+                    I&apos;ll search through scientific literature to find
+                    relevant information about your topic
                   </p>
                 </div>
-                <div className="flex items-start gap-2">
-                  <FileText className="mt-1 h-5 w-5 flex-shrink-0" />
+                <div className="flex items-start gap-1.5">
+                  <FileText className="mt-0.5 h-4 w-4 flex-shrink-0" />
                   <p>
-                    I'll analyze and summarize the findings in an
+                    I&apos;ll analyze and summarize the findings in an
                     easy-to-understand way
                   </p>
                 </div>
-                <div className="flex items-start gap-2">
-                  <BookOpen className="mt-1 h-5 w-5 flex-shrink-0" />
+                <div className="flex items-start gap-1.5">
+                  <BookOpen className="mt-0.5 h-4 w-4 flex-shrink-0" />
                   <p>
                     You can explore the sources and dive deeper into any aspect
                     that interests you
