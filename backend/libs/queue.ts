@@ -12,6 +12,7 @@ interface Task {
 }
 
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const ENV = process.env.NODE_ENV === 'production' ? 'prod' : 'dev';
 
 async function releaseStaleLocks() {
   const { error } = await supabase
@@ -34,6 +35,7 @@ export async function sendToQueue(context: Context) {
     task_id: context.taskId,
     state: context.state,
     context: context,
+    env: ENV,
   });
 
   if (error) {
@@ -58,6 +60,7 @@ export async function processNextTask(): Promise<Task | null> {
       .select('id, task_id, state, context')
       // @ts-ignore
       .is('worker_id', null)
+      .eq('env', ENV)
       .order('created_at', { ascending: true })
       .limit(1);
 
