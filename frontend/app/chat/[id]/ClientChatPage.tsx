@@ -142,14 +142,7 @@ export default function ClientChatPage({
             if (!newStates[step]) newStates[step] = { status: 'loading' };
           });
 
-          if (
-            [
-              'parseQuery',
-              'fetchMetadata',
-              'processPaper',
-              'Complete',
-            ].includes(state)
-          ) {
+          if (['fetchMetadata', 'processPaper', 'Complete'].includes(state)) {
             newStates['Extracting key terms'] = {
               status: 'completed',
               data: parsed_query,
