@@ -1,5 +1,6 @@
 import { AuthProvider } from '@/providers/AuthProvider';
 import { createClient } from '@/supabase/server';
+import { Analytics } from '@vercel/analytics/next';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Roboto, Roboto_Slab } from 'next/font/google';
 import './globals.css';
@@ -48,6 +49,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${roboto.variable} ${robotoSlab.variable} antialiased dark`}
       >
+        <Analytics />
         <AuthProvider user={user}>{children}</AuthProvider>
       </body>
     </html>
