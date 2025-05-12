@@ -603,24 +603,30 @@ export default function ClientChatPage({
                             </div>
                           ))}
                           {typeof task?.processed_articles === 'number' &&
-                            typeof task?.total_articles === 'number' &&
-                            task.processed_articles === task.total_articles &&
-                            task.total_articles > 0 && (
-                              <div className="mt-4 p-4 bg-gradient-to-r from-green-900/40 to-black-900/20 border border-green-900/50 rounded-lg">
-                                <div className="flex items-center gap-2 text-green-400">
-                                  <CheckCircle2 className="w-4 h-4" />
-                                  <span className="font-medium">
-                                    Research Complete
-                                  </span>
-                                </div>
-                                <p className="mt-2 text-sm text-gray-300">
-                                  Your research materials are ready! You can now
-                                  ask questions about the papers, request
-                                  summaries, or explore specific topics in
-                                  detail.
-                                </p>
+                          typeof task?.total_articles === 'number' &&
+                          task.processed_articles === task.total_articles &&
+                          task.total_articles > 0 ? (
+                            <div className="mt-4 p-4 bg-gradient-to-r from-green-900/40 to-black-900/20 border border-green-900/50 rounded-lg">
+                              <div className="flex items-center gap-2 text-green-400">
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span className="font-medium">
+                                  Research Complete
+                                </span>
                               </div>
-                            )}
+                              <p className="mt-2 text-sm text-gray-300">
+                                Your research materials are ready! You can now
+                                ask questions about the papers, request
+                                summaries, or explore specific topics in detail.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="mt-4 flex items-center gap-2 text-sm text-gray-400 bg-zinc-800/30 p-3 rounded-lg border border-zinc-700/50">
+                              <p>
+                                If the research progress is still loading after
+                                30 seconds, try refreshing the page.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
