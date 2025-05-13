@@ -1,7 +1,6 @@
 import { supabase } from '../../libs/supabase.js';
-import { google } from '@ai-sdk/google';
-import { anthropic } from '@ai-sdk/anthropic';
-import { generateText, streamText, tool } from 'ai';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { streamText, tool } from 'ai';
 import { z } from 'zod';
 import { findRelevantContent } from './utils/findRelevantContent.js';
 import { Request } from 'express';
@@ -9,9 +8,7 @@ import { SYSTEM_PROMPT } from './utils/systemPrompt.js';
 
 export async function handleChatRequest(req: Request): Promise<Response> {
   try {
-    const { chatId, messages } = req.body;
-    // console.log('Received chat request:', JSON.stringify(req.body, null, 2));
-    console.log('Most recent message:', messages[messages.length - 1]);
+    const { chatId, messages, model = 'openai/o3-mini' } = req.body;
 
     if (!chatId || !messages?.length) {
       console.log('Missing required fields:', {
@@ -25,6 +22,16 @@ export async function handleChatRequest(req: Request): Promise<Response> {
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
+
+    // Map frontend model IDs to OpenRouter model IDs
+    const modelMap: { [key: string]: string } = {
+      'gpt-o3-mini': 'openai/o3-mini',
+      'gemini-2.5-flash-preview': 'google/gemini-2.5-flash-preview',
+    };
+
+    const openRouterModel = modelMap[model] || model;
+
+    console.log(openRouterModel);
 
     const userMessages = messages.filter(
       (message: { role: string }) => message.role === 'user'
@@ -75,8 +82,12 @@ export async function handleChatRequest(req: Request): Promise<Response> {
       );
     });
 
+    const openrouter = createOpenRouter({
+      apiKey: process.env.OPENROUTER_API_KEY,
+    });
+
     const result = streamText({
-      model: anthropic('claude-3-5-sonnet-latest'),
+      model: openrouter.chat(openRouterModel),
       messages: validatedMessages,
       system: SYSTEM_PROMPT,
       maxSteps: 5,
@@ -108,7 +119,10 @@ export async function handleChatRequest(req: Request): Promise<Response> {
       },
       onFinish: async ({ response }) => {
         console.log('AI stream finished, processing response...');
-        console.log(JSON.stringify(response.messages, null, 2));
+        console.log(
+          'Response messages:',
+          JSON.stringify(response.messages, null, 2)
+        );
         const assistantMessages = response.messages.filter(
           (msg) => msg.role === 'assistant'
         );
@@ -123,6 +137,7 @@ export async function handleChatRequest(req: Request): Promise<Response> {
             chat_id: chatId,
             parts: assistantMessage?.content,
             role: 'assistant',
+            model: openRouterModel,
           });
 
           if (storeError) {
@@ -146,7 +161,14 @@ export async function handleChatRequest(req: Request): Promise<Response> {
     });
 
     console.log('Stream text setup complete, returning stream response');
-    return result.toDataStreamResponse();
+    try {
+      const response = result.toDataStreamResponse();
+      console.log('Successfully created stream response');
+      return response;
+    } catch (error) {
+      console.error('Error creating stream response:', error);
+      throw error;
+    }
   } catch (error) {
     console.error('Chat request error:', error);
     return new Response(
