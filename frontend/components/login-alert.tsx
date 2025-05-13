@@ -120,6 +120,29 @@ export function LoginAlert({ open, onOpenChange }: LoginAlertProps) {
           >
             {isLoading ? 'Please wait...' : isSignUp ? 'Sign up' : 'Log in'}
           </Button>
+          {isSignUp && (
+            <p className="text-xs text-zinc-400 text-center">
+              By signing up, you agree to our
+              <br />
+              <a
+                href="/legal/tos"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-zinc-300 hover:text-white underline"
+              >
+                Terms of Service
+              </a>{' '}
+              and{' '}
+              <a
+                href="/legal/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-zinc-300 hover:text-white underline"
+              >
+                Privacy Policy
+              </a>
+            </p>
+          )}
           <Button
             type="button"
             variant="outline"

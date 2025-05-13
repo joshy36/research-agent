@@ -32,6 +32,9 @@ export const metadata: Metadata = {
   description:
     'AI-powered research assistant that helps you explore and understand complex topics',
   keywords: ['research', 'AI', 'assistant', 'knowledge', 'learning'],
+  icons: {
+    icon: '/favicon.png',
+  },
 };
 
 export default async function RootLayout({
