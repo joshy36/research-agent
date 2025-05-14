@@ -49,7 +49,7 @@ export default function Research() {
       }).then((res) => res.json());
       console.log('Raw result:', result);
 
-      router.push(`/chat/${result.chatId}`);
+      router.push(`/chat/${result.chatId}?tab=research`);
     } catch (err) {
       setError('Failed to fetch research data. Please try again.');
       console.error(err);
@@ -99,7 +99,7 @@ export default function Research() {
             <div className="flex flex-col items-center gap-2 mb-4">
               <div className="flex items-center gap-2">
                 <p className="text-zinc-400 text-sm text-center">
-                  Discover insights from scientific literature.
+                  Discover insights from scientific literature. Not a doctor.
                 </p>
                 <button
                   onClick={() => setShowExplainer(!showExplainer)}

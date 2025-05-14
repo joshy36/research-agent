@@ -1,4 +1,3 @@
-// app/chat/[id]/page.tsx
 import { supabase } from '@/providers/supabase';
 import ClientChatPage from './ClientChatPage';
 
@@ -9,7 +8,17 @@ export default async function ChatPage({
 }) {
   const params = await paramsPromise;
 
-  // Fetch messages from Supabase
+  const { data: chatData, error: chatError } = await supabase
+    .from('chats')
+    .select('*, tasks(*)')
+    .eq('id', params.id)
+    .single();
+
+  if (chatError) {
+    console.error('Failed to fetch chat:', chatError);
+    throw new Error('Failed to load chat');
+  }
+
   const { data: messagesData, error: messagesError } = await supabase
     .from('messages')
     .select('*')
@@ -21,7 +30,6 @@ export default async function ChatPage({
     throw new Error('Failed to load messages');
   }
 
-  // Convert database rows to chat messages
   function rowToChatMessage(row: any) {
     return {
       id: row.id.toString(),
@@ -34,5 +42,15 @@ export default async function ChatPage({
 
   const initialMessages = messagesData.map(rowToChatMessage);
 
-  return <ClientChatPage params={params} initialMessages={initialMessages} />;
+  return (
+    <ClientChatPage
+      params={params}
+      initialMessages={initialMessages}
+      initialChatData={{
+        title: chatData.title || 'Research Chat',
+        createdAt: chatData.created_at,
+        taskId: chatData.task_id,
+      }}
+    />
+  );
 }

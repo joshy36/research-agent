@@ -15,6 +15,25 @@ import { fetchArticlesMetadata } from './utils/fetchArticlesMetadata.js';
 import { chunkAndEmbedPaper } from './utils/generateEmbedding.js';
 import { toMeshHeading } from './utils/toMeshHeading.js';
 
+// Add the state mapping at the top of the file with other constants
+const stateToStep = {
+  parseQuery: 'Extracting key terms',
+  fetchMetadata: 'Fetching relevant articles',
+  processPaper: 'Processing and embedding papers',
+  generatingResponse: 'Generating response',
+  Complete: 'Complete',
+} as const;
+
+type TaskState =
+  | 'parseQuery'
+  | 'fetchMetadata'
+  | 'processPaper'
+  | 'generatingResponse'
+  | 'Complete';
+
+// Add at the top of the file with other constants
+const processingTasks = new Set<string>();
+
 async function processTask(task: {
   id: number;
   taskId: string;
@@ -199,48 +218,7 @@ async function processTask(task: {
           console.error('Error fetching task state:', taskError);
         } else {
           console.log('Current task state:', currentTask);
-
-          // Check if task is complete - either all articles are processed or we have no more articles to process
-          if (
-            currentTask &&
-            currentTask.processed_articles > 0 &&
-            currentTask.total_articles > 0 &&
-            currentTask.processed_articles >= currentTask.total_articles &&
-            currentTask.state !== 'Complete'
-          ) {
-            // Only update if not already complete
-            console.log(
-              'Marking task as complete - Processed:',
-              currentTask.processed_articles,
-              'Total:',
-              currentTask.total_articles
-            );
-
-            // Update task state to Complete
-            const { error: updateError } = await supabase
-              .from('tasks')
-              .update({
-                state: 'Complete',
-                processed_articles: currentTask.processed_articles,
-              })
-              .eq('task_id', context.taskId);
-
-            if (updateError) {
-              console.error('Error updating task state:', updateError);
-            } else {
-              console.log('Successfully marked task as complete');
-              await completeTask(task.taskId);
-            }
-            return;
-          }
         }
-
-        // If we get here, task is not complete
-        console.log('Task not complete:', {
-          processedArticles: currentTask?.processed_articles,
-          totalArticles: currentTask?.total_articles,
-          currentState: currentTask?.state,
-        });
         break;
       }
       default:
@@ -315,8 +293,9 @@ async function startCompletionChecker() {
       // Check for tasks that should be complete
       const { data: tasks, error } = await supabase
         .from('tasks')
-        .select('task_id, processed_articles, total_articles, state')
-        .neq('state', 'Complete');
+        .select('task_id, processed_articles, total_articles, state, message')
+        .neq('state', 'Complete')
+        .neq('state', 'generatingResponse'); // Don't process tasks already in generatingResponse
 
       if (error) {
         console.error('Error checking for completed tasks:', error);
@@ -345,24 +324,71 @@ async function startCompletionChecker() {
               completion_ratio: `${task.processed_articles}/${task.total_articles}`,
             });
 
-            // Update task state to Complete
-            const { error: updateError } = await supabase
-              .from('tasks')
-              .update({
-                state: 'Complete',
-                processed_articles: task.processed_articles,
-              })
-              .eq('task_id', task.task_id);
+            try {
+              // Update task state to generatingResponse
+              const { error: updateError } = await supabase
+                .from('tasks')
+                .update({
+                  state: 'generatingResponse',
+                  processed_articles: task.processed_articles,
+                })
+                .eq('task_id', task.task_id);
 
-            if (updateError) {
-              console.error('Error updating task state:', updateError);
-            } else {
-              console.log('Successfully marked task as complete:', {
+              if (updateError) {
+                console.error('Error updating task state:', updateError);
+                continue;
+              }
+
+              console.log('Successfully marked task as generatingResponse:', {
                 task_id: task.task_id,
-                final_state: 'Complete',
+                final_state: 'generatingResponse',
                 final_processed_articles: task.processed_articles,
               });
-              await completeTask(task.task_id);
+
+              // Get the chat ID for this task
+              const { data: chatData, error: chatError } = await supabase
+                .from('chats')
+                .select('id')
+                .eq('task_id', task.task_id)
+                .single();
+
+              if (chatError) {
+                console.error('Error fetching chat data:', chatError);
+                continue;
+              }
+
+              // Trigger initial chat message
+              try {
+                console.log(
+                  'Triggering initial chat message for task:',
+                  task.task_id
+                );
+                const response = await fetch('http://localhost:3001/api/chat', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    chatId: chatData.id,
+                    messages: [
+                      {
+                        role: 'user',
+                        parts: [{ type: 'text', text: task.message }],
+                      },
+                    ],
+                    model: 'gemini-2.5-flash-preview',
+                  }),
+                });
+
+                if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                console.log('Successfully triggered initial chat message');
+              } catch (error) {
+                console.error('Error triggering initial chat message:', error);
+              }
+            } catch (error) {
+              console.error('Error processing task:', error);
             }
           }
         }
@@ -371,8 +397,8 @@ async function startCompletionChecker() {
       console.error('Error in completion checker:', error);
     }
 
-    // Wait 3 seconds before checking again
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    // Wait 1 second before checking again
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 }
 

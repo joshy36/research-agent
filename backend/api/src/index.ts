@@ -72,19 +72,6 @@ app.post('/queue', async (req: Request, res: Response) => {
 
     if (chatError) throw chatError;
 
-    const { error: messageError } = await supabase.from('messages').insert({
-      chat_id: chatData.id,
-      parts: [
-        {
-          type: 'text',
-          text: message,
-        },
-      ],
-      role: 'user',
-    });
-
-    if (messageError) throw messageError;
-
     await sendToQueue({
       taskId: taskData.task_id,
       message,

@@ -3,6 +3,7 @@ import { createClient } from '@/supabase/server';
 import { Analytics } from '@vercel/analytics/next';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Roboto, Roboto_Slab } from 'next/font/google';
+import { Toaster } from 'sonner';
 import './globals.css';
 
 const geistSans = Geist({
@@ -53,6 +54,17 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${roboto.variable} ${robotoSlab.variable} antialiased dark`}
       >
         <Analytics />
+        <Toaster
+          theme="dark"
+          className="toaster group"
+          toastOptions={{
+            style: {
+              background: 'black',
+              color: 'white',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            },
+          }}
+        />
         <AuthProvider user={user}>{children}</AuthProvider>
       </body>
     </html>

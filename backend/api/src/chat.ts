@@ -23,6 +23,23 @@ export async function handleChatRequest(req: Request): Promise<Response> {
       );
     }
 
+    // Get the task ID for this chat
+    const { data: chatData, error: chatError } = await supabase
+      .from('chats')
+      .select('task_id')
+      .eq('id', chatId)
+      .single();
+
+    if (chatError) throw chatError;
+
+    // Remove the early Complete state update
+    const { data: existingMessages, error: messagesError } = await supabase
+      .from('messages')
+      .select('id')
+      .eq('chat_id', chatId);
+
+    if (messagesError) throw messagesError;
+
     // Map frontend model IDs to OpenRouter model IDs
     const modelMap: { [key: string]: string } = {
       'gpt-o3-mini': 'openai/o3-mini',
@@ -30,8 +47,6 @@ export async function handleChatRequest(req: Request): Promise<Response> {
     };
 
     const openRouterModel = modelMap[model] || model;
-
-    console.log(openRouterModel);
 
     const userMessages = messages.filter(
       (message: { role: string }) => message.role === 'user'
@@ -118,11 +133,8 @@ export async function handleChatRequest(req: Request): Promise<Response> {
         }),
       },
       onFinish: async ({ response }) => {
+        console.log('Response type:', response);
         console.log('AI stream finished, processing response...');
-        console.log(
-          'Response messages:',
-          JSON.stringify(response.messages, null, 2)
-        );
         const assistantMessages = response.messages.filter(
           (msg) => msg.role === 'assistant'
         );
@@ -153,6 +165,34 @@ export async function handleChatRequest(req: Request): Promise<Response> {
               role: 'assistant',
               content_length: assistantMessage?.content?.length,
             });
+
+            // Only update to Complete if this is the first message
+            if (existingMessages.length === 0 && chatData.task_id) {
+              console.log(
+                'First message stored, updating task state to Complete:',
+                {
+                  task_id: chatData.task_id,
+                  message_count: existingMessages.length,
+                }
+              );
+
+              const { error: updateError } = await supabase
+                .from('tasks')
+                .update({ state: 'Complete' })
+                .eq('task_id', chatData.task_id);
+
+              if (updateError) {
+                console.error(
+                  'Error updating task state to Complete:',
+                  updateError
+                );
+              } else {
+                console.log('Successfully marked task as Complete:', {
+                  task_id: chatData.task_id,
+                  message_count: existingMessages.length,
+                });
+              }
+            }
           }
         } else {
           console.log('No assistant messages found in response');
