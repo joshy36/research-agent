@@ -91,11 +91,27 @@ export async function processNextTask(): Promise<Task | null> {
 
 export async function completeTask(taskId: string) {
   console.log(`Completing task ${taskId}...`);
-  const { error } = await supabase.from('queue').delete().eq('task_id', taskId);
 
-  if (error) {
-    console.error('Error completing task:', error);
-    throw error;
+  // First update the task state to Complete
+  const { error: updateError } = await supabase
+    .from('tasks')
+    .update({ state: 'Complete' })
+    .eq('task_id', taskId);
+
+  if (updateError) {
+    console.error('Error updating task state to Complete:', updateError);
+    throw updateError;
+  }
+
+  // Then remove from queue
+  const { error: deleteError } = await supabase
+    .from('queue')
+    .delete()
+    .eq('task_id', taskId);
+
+  if (deleteError) {
+    console.error('Error completing task:', deleteError);
+    throw deleteError;
   }
   console.log(`Successfully completed task ${taskId}`);
 }

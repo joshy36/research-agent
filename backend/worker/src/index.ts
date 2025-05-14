@@ -325,6 +325,16 @@ async function startCompletionChecker() {
             });
 
             try {
+              console.log(
+                `Attempting to complete/delete jobs for task ${task.task_id} in the queue as all articles are processed...`
+              );
+              const { error: deleteError } = await supabase
+                .from('queue')
+                .delete()
+                .eq('task_id', task.task_id);
+              console.log(
+                `Successfully completed/deleted jobs for task ${task.task_id} in the queue.`
+              );
               // Update task state to generatingResponse
               const { error: updateError } = await supabase
                 .from('tasks')

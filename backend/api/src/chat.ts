@@ -5,6 +5,34 @@ import { z } from 'zod';
 import { findRelevantContent } from './utils/findRelevantContent.js';
 import { Request } from 'express';
 import { SYSTEM_PROMPT } from './utils/systemPrompt.js';
+import { completeTask } from '../../libs/queue.js';
+
+async function completeTaskAndUpdateState(taskId: string) {
+  console.log('Updating task state to Complete:', { task_id: taskId });
+
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  const { error: updateError } = await supabase
+    .from('tasks')
+    .update({ state: 'Complete' })
+    .eq('task_id', taskId);
+
+  if (updateError) {
+    console.error('Error updating task state to Complete:', updateError);
+    return false;
+  }
+
+  console.log('Successfully marked task as Complete:', { task_id: taskId });
+
+  try {
+    await completeTask(taskId);
+    console.log('Successfully completed task in queue:', taskId);
+    return true;
+  } catch (error) {
+    console.error('Error completing task in queue:', error);
+    return false;
+  }
+}
 
 export async function handleChatRequest(req: Request): Promise<Response> {
   try {
@@ -133,7 +161,6 @@ export async function handleChatRequest(req: Request): Promise<Response> {
         }),
       },
       onFinish: async ({ response }) => {
-        console.log('Response type:', response);
         console.log('AI stream finished, processing response...');
         const assistantMessages = response.messages.filter(
           (msg) => msg.role === 'assistant'
@@ -166,31 +193,18 @@ export async function handleChatRequest(req: Request): Promise<Response> {
               content_length: assistantMessage?.content?.length,
             });
 
-            // Only update to Complete if this is the first message
+            // Only complete task if this is the first message
             if (existingMessages.length === 0 && chatData.task_id) {
-              console.log(
-                'First message stored, updating task state to Complete:',
-                {
-                  task_id: chatData.task_id,
-                  message_count: existingMessages.length,
-                }
-              );
+              console.log('First message stored, completing task:', {
+                task_id: chatData.task_id,
+                message_count: existingMessages.length,
+              });
 
-              const { error: updateError } = await supabase
-                .from('tasks')
-                .update({ state: 'Complete' })
-                .eq('task_id', chatData.task_id);
-
-              if (updateError) {
-                console.error(
-                  'Error updating task state to Complete:',
-                  updateError
-                );
-              } else {
-                console.log('Successfully marked task as Complete:', {
-                  task_id: chatData.task_id,
-                  message_count: existingMessages.length,
-                });
+              try {
+                await completeTask(chatData.task_id);
+                console.log('Successfully completed task:', chatData.task_id);
+              } catch (error) {
+                console.error('Error completing task:', error);
               }
             }
           }

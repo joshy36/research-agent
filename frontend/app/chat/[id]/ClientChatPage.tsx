@@ -558,7 +558,7 @@ export default function ClientChatPage({
                                   >
                                     <div className="flex flex-col gap-1">
                                       <div className="flex items-center justify-between text-xs text-gray-400">
-                                        <span>Processing articles...</span>
+                                        <span>Processing...</span>
                                         <span className="text-gray-300">
                                           {stepStates[step]?.data
                                             ?.processed_articles || 0}{' '}
@@ -688,7 +688,7 @@ export default function ClientChatPage({
                               {step === 'Processing and embedding papers' && (
                                 <div className="text-gray-400 space-y-2">
                                   <div className="flex items-center justify-between text-xs">
-                                    <span>Processing articles...</span>
+                                    <span>Processing...</span>
                                     <span className="text-gray-300">
                                       {stepStates[step]?.data
                                         ?.processed_articles || 0}{' '}
