@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "generate-types": "npx supabase gen types typescript --project-id nxxknekdcbcsypootqty --schema public > supabase/database.types.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.10",
@@ -16,6 +17,7 @@
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "p-limit": "^6.2.0",
+    "supabase": "^2.22.12",
     "uuid": "^11.1.0",
     "zod": "^3.24.2"
   },

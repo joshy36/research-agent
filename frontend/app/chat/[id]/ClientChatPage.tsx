@@ -89,6 +89,12 @@ export default function ClientChatPage({
     'gemini-2.5-flash-preview',
   );
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [messageLimit, setMessageLimit] = useState({
+    count: 0,
+    limit: 5,
+    resetDate: null as null | string,
+  });
+  const [loadingLimit, setLoadingLimit] = useState(true);
 
   const { messages, input, handleInputChange, handleSubmit, status } = useChat({
     maxSteps: 3,
@@ -101,6 +107,16 @@ export default function ClientChatPage({
           : 'google/gemini-2.5-flash-preview',
     },
     initialMessages,
+    onError: (error) => {
+      if (
+        error instanceof Error &&
+        error.message.includes('Message limit reached')
+      ) {
+        toast.error(
+          'You have reached your weekly message limit (5 per week). Please try again later.',
+        );
+      }
+    },
   });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -375,6 +391,48 @@ export default function ClientChatPage({
     };
   }, [task?.task_id, params.id, updateStepStates]);
 
+  async function fetchMessageLimit() {
+    setLoadingLimit(true);
+    try {
+      const url =
+        process.env.NEXT_PUBLIC_API_URL +
+        `/api/message-limit-status?chatId=${params.id}`;
+      console.log('[ClientChatPage] Fetching message limit from:', url);
+      const res = await fetch(url);
+      console.log('[ClientChatPage] Response status:', res.status);
+      if (res.ok) {
+        const data = await res.json();
+        console.log('[ClientChatPage] Message limit data:', data);
+        setMessageLimit({
+          count: data.count,
+          limit: data.limit,
+          resetDate: data.resetDate
+            ? new Date(data.resetDate).toLocaleString()
+            : null,
+        });
+      } else {
+        const err = await res.text();
+        console.error('[ClientChatPage] Error response:', err);
+      }
+    } catch (e) {
+      console.error('[ClientChatPage] Fetch error:', e);
+    } finally {
+      setLoadingLimit(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchMessageLimit();
+    // eslint-disable-next-line
+  }, [params.id]);
+
+  // After sending a message, refetch the limit
+  useEffect(() => {
+    if (status === 'submitted' || status === 'streaming') return;
+    fetchMessageLimit();
+    // eslint-disable-next-line
+  }, [messages.length]);
+
   function convertToUIMessages(messages: Array<any>): Array<UIMessage> {
     return messages.map((message) => ({
       id: message.id,
@@ -422,6 +480,19 @@ export default function ClientChatPage({
     setTimeout(() => {
       setCopiedMessageId(null);
     }, 2000);
+  };
+
+  // Wrap handleSubmit to increment messageLimit.count client-side
+  const handleSubmitWithLimit = (e: any) => {
+    if (
+      input.trim() &&
+      status !== 'submitted' &&
+      status !== 'streaming' &&
+      messageLimit.count < messageLimit.limit
+    ) {
+      setMessageLimit((prev) => ({ ...prev, count: prev.count + 1 }));
+    }
+    handleSubmit(e);
   };
 
   return (
@@ -833,7 +904,7 @@ export default function ClientChatPage({
       {activeTab === 'chat' && (
         <div className="w-full bg-background">
           <form
-            onSubmit={handleSubmit}
+            onSubmit={handleSubmitWithLimit}
             className="px-4"
             onClick={() => {
               if (activeTab !== 'chat') {
@@ -841,17 +912,25 @@ export default function ClientChatPage({
               }
             }}
           >
-            <div className="max-w-3xl mx-auto py-3 p-3 bg-zinc-900/80 backdrop-blur-sm rounded-t-xl border-t border-zinc-700">
-              <div className="flex flex-row justify-between">
-                <div className="flex items-center gap-2 text-sm text-zinc-400 mb-4 pl-4"></div>
-              </div>
-              <div className="flex items-start gap-2">
+            <div className="max-w-3xl mx-auto py-4 p-4 bg-zinc-900/80 backdrop-blur-sm rounded-t-xl border-t border-zinc-700">
+              <div className="flex items-start gap-2 relative mb-4">
                 <textarea
                   value={input}
                   onChange={handleInputChange}
                   placeholder="Type your message..."
                   className="w-full custom-scrollbar-sidebar pl-4 pr-4 text-white placeholder:text-zinc-400 focus:outline-none resize-none min-h-[40px] max-h-[240px]"
-                  disabled={status === 'submitted' || status === 'streaming'}
+                  disabled={(() => {
+                    const disabled =
+                      status === 'submitted' ||
+                      status === 'streaming' ||
+                      messageLimit.count >= messageLimit.limit;
+                    if (disabled)
+                      console.log(
+                        '[ClientChatPage] Input disabled due to message limit:',
+                        messageLimit,
+                      );
+                    return disabled;
+                  })()}
                   rows={1}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -859,9 +938,10 @@ export default function ClientChatPage({
                       if (
                         input.trim() &&
                         status !== 'submitted' &&
-                        status !== 'streaming'
+                        status !== 'streaming' &&
+                        messageLimit.count < messageLimit.limit
                       ) {
-                        handleSubmit(e);
+                        handleSubmitWithLimit(e);
                       }
                     }
                   }}
@@ -871,38 +951,89 @@ export default function ClientChatPage({
                       Math.min(e.currentTarget.scrollHeight, 240) + 'px';
                   }}
                 />
+                {/* Overlay when message limit is reached */}
+                {messageLimit.count >= messageLimit.limit && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/80 rounded-lg z-10">
+                    <span className="text-xs text-zinc-200 font-semibold text-center px-2">
+                      Message limit reached.
+                    </span>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center justify-between mt-2 px-4">
+              <div className="flex items-center justify-between">
                 <ModelSelector
                   selectedModel={selectedModel}
                   onModelChange={setSelectedModel}
                   status={status}
                 />
-                <button
-                  type="submit"
-                  disabled={
-                    status === 'submitted' ||
-                    status === 'streaming' ||
-                    !input.trim()
-                  }
-                  className="inline-flex cursor-pointer items-center justify-center w-9 h-9 p-2 rounded-lg bg-white text-gray-900 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed shadow border border-gray-200 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-300"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                <div className="flex flex-row items-center gap-4 ml-4 flex-1 justify-end">
+                  <div className="hidden md:flex flex-col items-end">
+                    <div className="flex flex-row items-center gap-2">
+                      <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden max-w-[120px] w-[120px]">
+                        <div
+                          className="bg-white h-1.5 rounded-full transition-all"
+                          style={{
+                            width: `${(messageLimit.count / messageLimit.limit) * 100}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs text-zinc-200 font-medium flex flex-row items-center gap-1">
+                        {loadingLimit ? (
+                          '...'
+                        ) : (
+                          <>
+                            <span>{messageLimit.count}</span>
+                            <span className="text-zinc-400">/</span>
+                            <span>{messageLimit.limit}</span>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                    {messageLimit.resetDate && (
+                      <span className="text-xs text-zinc-400 mt-1">
+                        Resets:{' '}
+                        {(() => {
+                          // Show date and time (no seconds)
+                          const d = new Date(messageLimit.resetDate);
+                          return d.toLocaleString(undefined, {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true,
+                          });
+                        })()}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={
+                      status === 'submitted' ||
+                      status === 'streaming' ||
+                      !input.trim() ||
+                      messageLimit.count >= messageLimit.limit
+                    }
+                    className="inline-flex cursor-pointer items-center justify-center w-9 h-9 p-2 rounded-lg bg-white text-gray-900 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed shadow border border-gray-200 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-300"
                   >
-                    <path d="m6 9 6-6 6 6" />
-                    <path d="M12 3v18" />
-                  </svg>
-                  <span className="sr-only">Send message</span>
-                </button>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="m6 9 6-6 6 6" />
+                      <path d="M12 3v18" />
+                    </svg>
+                    <span className="sr-only">Send message</span>
+                  </button>
+                </div>
               </div>
             </div>
           </form>

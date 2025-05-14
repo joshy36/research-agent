@@ -6,6 +6,7 @@ import { generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
 import { handleChatRequest } from './chat.js';
+import { getUserMessageLimitStatus } from './messageLimitStatus.js';
 import { toNodeStream } from './utils/stream.js';
 
 const app = express();
@@ -162,6 +163,9 @@ app.post('/queue/purge', async (_req: Request, res: Response) => {
     });
   }
 });
+
+// @ts-expect-error Express type inference issue, handler signature is correct
+app.get('/api/message-limit-status', getUserMessageLimitStatus);
 
 app.listen(PORT, () => {
   console.log(`Express server running on http://localhost:${PORT}`);

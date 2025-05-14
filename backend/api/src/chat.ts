@@ -51,14 +51,48 @@ export async function handleChatRequest(req: Request): Promise<Response> {
       );
     }
 
-    // Get the task ID for this chat
+    // Get the task ID and user ID for this chat
     const { data: chatData, error: chatError } = await supabase
       .from('chats')
-      .select('task_id')
+      .select('task_id, user_id')
       .eq('id', chatId)
       .single();
 
     if (chatError) throw chatError;
+
+    // Enforce 5 user messages per week limit
+    if (chatData?.user_id) {
+      const oneWeekAgo = new Date(
+        Date.now() - 7 * 24 * 60 * 60 * 1000
+      ).toISOString();
+      const { count: userMessageCount, error: countError } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'user')
+        .in(
+          'chat_id',
+          (
+            await supabase
+              .from('chats')
+              .select('id')
+              .eq('user_id', chatData.user_id)
+          ).data?.map((c) => c.id) || []
+        )
+        .gte('created_at', oneWeekAgo);
+      if (countError) throw countError;
+      if ((userMessageCount ?? 0) >= 5) {
+        return new Response(
+          JSON.stringify({
+            error:
+              'Message limit reached. You can only send 5 messages per week.',
+          }),
+          {
+            status: 429,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+    }
 
     // Remove the early Complete state update
     const { data: existingMessages, error: messagesError } = await supabase
