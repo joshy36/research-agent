@@ -6,9 +6,9 @@ export const fetchArticlesMetadata = async (context: Context) => {
 
   const baseUrl = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/';
   const query = keyTerms?.map((term) => `${term}[mesh]`).join(' AND ');
-  const searchUrl = `${baseUrl}esearch.fcgi?db=pmc&term=${encodeURIComponent(
+  let searchUrl = `${baseUrl}esearch.fcgi?db=pmc&term=${encodeURIComponent(
     query ?? ''
-  )}&retmax=10&retmode=json`;
+  )}&retmax=10&retmode=json&api_key=${process.env.NCBI_API_KEY}`;
 
   const searchResponse = await fetch(searchUrl);
   if (!searchResponse.ok) {

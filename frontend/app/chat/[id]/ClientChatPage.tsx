@@ -830,82 +830,84 @@ export default function ClientChatPage({
       </div>
 
       {/* Input form */}
-      <div className="w-full bg-background">
-        <form
-          onSubmit={handleSubmit}
-          className="px-4"
-          onClick={() => {
-            if (activeTab !== 'chat') {
-              handleTabChange('chat');
-            }
-          }}
-        >
-          <div className="max-w-3xl mx-auto py-3 p-3 bg-zinc-900/80 backdrop-blur-sm rounded-t-xl border-t border-zinc-700">
-            <div className="flex flex-row justify-between">
-              <div className="flex items-center gap-2 text-sm text-zinc-400 mb-4 pl-4"></div>
-            </div>
-            <div className="flex items-start gap-2">
-              <textarea
-                value={input}
-                onChange={handleInputChange}
-                placeholder="Type your message..."
-                className="w-full custom-scrollbar-sidebar pl-4 pr-4 text-white placeholder:text-zinc-400 focus:outline-none resize-none min-h-[40px] max-h-[240px]"
-                disabled={status === 'submitted' || status === 'streaming'}
-                rows={1}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (
-                      input.trim() &&
-                      status !== 'submitted' &&
-                      status !== 'streaming'
-                    ) {
-                      handleSubmit(e);
+      {activeTab === 'chat' && (
+        <div className="w-full bg-background">
+          <form
+            onSubmit={handleSubmit}
+            className="px-4"
+            onClick={() => {
+              if (activeTab !== 'chat') {
+                handleTabChange('chat');
+              }
+            }}
+          >
+            <div className="max-w-3xl mx-auto py-3 p-3 bg-zinc-900/80 backdrop-blur-sm rounded-t-xl border-t border-zinc-700">
+              <div className="flex flex-row justify-between">
+                <div className="flex items-center gap-2 text-sm text-zinc-400 mb-4 pl-4"></div>
+              </div>
+              <div className="flex items-start gap-2">
+                <textarea
+                  value={input}
+                  onChange={handleInputChange}
+                  placeholder="Type your message..."
+                  className="w-full custom-scrollbar-sidebar pl-4 pr-4 text-white placeholder:text-zinc-400 focus:outline-none resize-none min-h-[40px] max-h-[240px]"
+                  disabled={status === 'submitted' || status === 'streaming'}
+                  rows={1}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (
+                        input.trim() &&
+                        status !== 'submitted' &&
+                        status !== 'streaming'
+                      ) {
+                        handleSubmit(e);
+                      }
                     }
+                  }}
+                  onInput={(e) => {
+                    e.currentTarget.style.height = 'auto';
+                    e.currentTarget.style.height =
+                      Math.min(e.currentTarget.scrollHeight, 240) + 'px';
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between mt-2 px-4">
+                <ModelSelector
+                  selectedModel={selectedModel}
+                  onModelChange={setSelectedModel}
+                  status={status}
+                />
+                <button
+                  type="submit"
+                  disabled={
+                    status === 'submitted' ||
+                    status === 'streaming' ||
+                    !input.trim()
                   }
-                }}
-                onInput={(e) => {
-                  e.currentTarget.style.height = 'auto';
-                  e.currentTarget.style.height =
-                    Math.min(e.currentTarget.scrollHeight, 240) + 'px';
-                }}
-              />
-            </div>
-            <div className="flex items-center justify-between mt-2 px-4">
-              <ModelSelector
-                selectedModel={selectedModel}
-                onModelChange={setSelectedModel}
-                status={status}
-              />
-              <button
-                type="submit"
-                disabled={
-                  status === 'submitted' ||
-                  status === 'streaming' ||
-                  !input.trim()
-                }
-                className="inline-flex cursor-pointer items-center justify-center w-9 h-9 p-2 rounded-lg bg-white text-gray-900 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed shadow border border-gray-200 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-300"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                  className="inline-flex cursor-pointer items-center justify-center w-9 h-9 p-2 rounded-lg bg-white text-gray-900 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed shadow border border-gray-200 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-300"
                 >
-                  <path d="m6 9 6-6 6 6" />
-                  <path d="M12 3v18" />
-                </svg>
-                <span className="sr-only">Send message</span>
-              </button>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="m6 9 6-6 6 6" />
+                    <path d="M12 3v18" />
+                  </svg>
+                  <span className="sr-only">Send message</span>
+                </button>
+              </div>
             </div>
-          </div>
-        </form>
-      </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

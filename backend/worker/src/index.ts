@@ -407,8 +407,8 @@ async function startCompletionChecker() {
       console.error('Error in completion checker:', error);
     }
 
-    // Wait 1 second before checking again
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Wait 2 seconds before checking again
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 }
 
