@@ -485,17 +485,6 @@ export default function ClientChatPage({
                   className="flex items-center gap-2"
                 >
                   Research
-                  {typeof task?.processed_articles === 'number' &&
-                  typeof task?.total_articles === 'number' &&
-                  task.processed_articles === task.total_articles &&
-                  task.total_articles > 0 ? (
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                  ) : task?.state === 'parseQuery' ||
-                    task?.state === 'processPaper' ||
-                    task?.state === 'fetchMetadata' ||
-                    task?.state === 'generatingResponse' ? (
-                    <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
-                  ) : null}
                 </TabsTrigger>
               </TabsList>
             </div>
