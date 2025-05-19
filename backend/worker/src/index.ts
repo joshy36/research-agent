@@ -56,6 +56,7 @@ async function processTask(task: {
             updatedKeyTerms.push(selectedHeading);
           } else {
             console.log(`No MeSH headings found for term "${term}"`);
+            updatedKeyTerms.push(term);
           }
         }
         console.log('Final MeSH headings:', updatedKeyTerms);
