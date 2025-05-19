@@ -124,7 +124,7 @@ export default function Research() {
                 />
                 <button
                   type="submit"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-white p-2 text-black hover:bg-zinc-100"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-white p-2 text-black hover:bg-zinc-100 cursor-pointer"
                 >
                   <Search className="h-5 w-5" />
                 </button>

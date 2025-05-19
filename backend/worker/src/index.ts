@@ -7,32 +7,15 @@ import { google } from '@ai-sdk/google';
 import { supabase } from '../../libs/supabase.js';
 import {
   processNextTask,
-  completeTask,
   releaseTaskLock,
   sendToQueue,
 } from '../../libs/queue.js';
-import { fetchArticlesMetadata } from './utils/fetchArticlesMetadata.js';
+import {
+  fetchArticleDetails,
+  fetchArticlesMetadata,
+} from './utils/fetchArticlesMetadata.js';
 import { chunkAndEmbedPaper } from './utils/generateEmbedding.js';
 import { toMeshHeading } from './utils/toMeshHeading.js';
-
-// Add the state mapping at the top of the file with other constants
-const stateToStep = {
-  parseQuery: 'Extracting key terms',
-  fetchMetadata: 'Fetching relevant articles',
-  processPaper: 'Processing and embedding papers',
-  generatingResponse: 'Generating response',
-  Complete: 'Complete',
-} as const;
-
-type TaskState =
-  | 'parseQuery'
-  | 'fetchMetadata'
-  | 'processPaper'
-  | 'generatingResponse'
-  | 'Complete';
-
-// Add at the top of the file with other constants
-const processingTasks = new Set<string>();
 
 async function processTask(task: {
   id: number;
@@ -99,19 +82,21 @@ async function processTask(task: {
       }
       case 'fetchMetadata': {
         console.log('Step 2: Fetching articles metadata...');
-        const articles = await fetchArticlesMetadata(context);
+        const allPmcids = await fetchArticlesMetadata(context);
+
+        const articles = await fetchArticleDetails(allPmcids);
 
         console.log('Articles done');
         await supabase
           .from('tasks')
           .update({
             state: 'processPaper',
-            total_articles: articles.articles.length,
+            total_articles: articles.length,
             processed_articles: 0,
           })
           .eq('task_id', context.taskId);
 
-        for (const article of articles.articles) {
+        for (const article of articles) {
           await sendToQueue({
             ...context,
             article: article,
