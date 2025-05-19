@@ -85,9 +85,7 @@ export default function ClientChatPage({
       }>;
     }>;
   } | null>(null);
-  const [selectedModel, setSelectedModel] = useState(
-    'gemini-2.5-flash-preview',
-  );
+  const [selectedModel, setSelectedModel] = useState('gpt-o3-mini');
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [messageLimit, setMessageLimit] = useState({
     count: 0,
@@ -206,13 +204,13 @@ export default function ClientChatPage({
               data: parsed_query,
             };
           }
-          if (
-            [
-              'fetchMetadata',
-              'processPaper',
-              'generatingResponse',
-              'Complete',
-            ].includes(state)
+          if (state === 'fetchMetadata') {
+            newStates['Fetching relevant articles'] = {
+              status: 'loading',
+              data: chats?.[0]?.chat_resources || [],
+            };
+          } else if (
+            ['processPaper', 'generatingResponse', 'Complete'].includes(state)
           ) {
             newStates['Fetching relevant articles'] = {
               status: 'completed',
@@ -569,11 +567,6 @@ export default function ClientChatPage({
                   <div className="mb-4">
                     <div className="flex justify-between items-center mb-2">
                       <p className="font-bold text-gray-200">Initial Query</p>
-                      {task?.created_at && (
-                        <p className="text-sm text-gray-400">
-                          {new Date(task.created_at).toLocaleString()}
-                        </p>
-                      )}
                     </div>
                     <div className="bg-zinc-800/50 rounded-lg p-3">
                       {task?.message ? (

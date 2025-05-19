@@ -1,5 +1,5 @@
 import { supabase } from '../../libs/supabase.js';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { openrouter } from '../../libs/openrouter.js';
 import { streamText, tool } from 'ai';
 import { z } from 'zod';
 import { findRelevantContent } from './utils/findRelevantContent.js';
@@ -157,10 +157,6 @@ export async function handleChatRequest(req: Request): Promise<Response> {
           typeof part.text === 'string' &&
           part.text.trim().length > 0
       );
-    });
-
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY,
     });
 
     const result = streamText({

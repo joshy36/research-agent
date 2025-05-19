@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { generateObject } from 'ai';
 import { prompt } from './prompt.js';
 import { Context } from '../../libs/types.js';
-import { google } from '@ai-sdk/google';
 import { supabase } from '../../libs/supabase.js';
 import {
   processNextTask,
@@ -16,6 +15,7 @@ import {
 } from './utils/fetchArticlesMetadata.js';
 import { chunkAndEmbedPaper } from './utils/generateEmbedding.js';
 import { toMeshHeading } from './utils/toMeshHeading.js';
+import { openrouter } from '../../libs/openrouter.js';
 
 async function processTask(task: {
   id: number;
@@ -30,7 +30,7 @@ async function processTask(task: {
     switch (context.state) {
       case 'parseQuery': {
         const { object } = await generateObject({
-          model: google('gemini-1.5-flash-latest'),
+          model: openrouter.chat('gpt-4o-mini'),
           schema: z.object({
             parsedQuery: z.object({
               rawTerms: z.array(z.string()),
@@ -372,7 +372,7 @@ async function startCompletionChecker() {
                         parts: [{ type: 'text', text: task.message }],
                       },
                     ],
-                    model: 'gemini-2.5-flash-preview',
+                    model: 'gpt-o3-mini',
                   }),
                 });
 

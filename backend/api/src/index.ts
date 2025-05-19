@@ -3,7 +3,7 @@ import express, { Request, Response } from 'express';
 import { sendToQueue } from '../../libs/queue.js';
 import { supabase } from '../../libs/supabase.js';
 import { generateObject } from 'ai';
-import { google } from '@ai-sdk/google';
+import { openrouter } from '../../libs/openrouter.js';
 import { z } from 'zod';
 import { handleChatRequest } from './chat.js';
 import { getUserMessageLimitStatus } from './messageLimitStatus.js';
@@ -56,7 +56,7 @@ app.post('/queue', async (req: Request, res: Response) => {
     if (taskError) throw taskError;
 
     const { object } = await generateObject({
-      model: google('gemini-1.5-flash-latest'),
+      model: openrouter.chat('gpt-4o-mini'),
       schema: z.object({ title: z.string() }),
       prompt: `Generate a short, descriptive title (max 5 words) for this research query: ${message}`,
     });
