@@ -10,6 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useAuth } from '@/providers/AuthProvider';
 import { supabase } from '@/providers/supabase';
 import { useChat } from '@ai-sdk/react';
 import { UIMessage } from 'ai';
@@ -93,6 +94,8 @@ export default function ClientChatPage({
     resetDate: null as null | string,
   });
   const [loadingLimit, setLoadingLimit] = useState(true);
+
+  const { user } = useAuth();
 
   const { messages, input, handleInputChange, handleSubmit, status } = useChat({
     maxSteps: 3,
@@ -392,9 +395,16 @@ export default function ClientChatPage({
   async function fetchMessageLimit() {
     setLoadingLimit(true);
     try {
+      if (!user) {
+        console.log(
+          '[ClientChatPage] User not available for message limit fetch.',
+        );
+        setLoadingLimit(false);
+        return;
+      }
       const url =
         process.env.NEXT_PUBLIC_API_URL +
-        `/api/message-limit-status?chatId=${params.id}`;
+        `/api/message-limit-status?userId=${user.id}`;
       console.log('[ClientChatPage] Fetching message limit from:', url);
       const res = await fetch(url);
       console.log('[ClientChatPage] Response status:', res.status);
@@ -420,16 +430,20 @@ export default function ClientChatPage({
   }
 
   useEffect(() => {
-    fetchMessageLimit();
+    if (user) {
+      fetchMessageLimit();
+    }
     // eslint-disable-next-line
-  }, [params.id]);
+  }, [params.id, user]);
 
   // After sending a message, refetch the limit
   useEffect(() => {
     if (status === 'submitted' || status === 'streaming') return;
-    fetchMessageLimit();
+    if (user) {
+      fetchMessageLimit();
+    }
     // eslint-disable-next-line
-  }, [messages.length]);
+  }, [messages.length, user]);
 
   function convertToUIMessages(messages: Array<any>): Array<UIMessage> {
     return messages.map((message) => ({

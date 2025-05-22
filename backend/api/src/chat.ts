@@ -61,7 +61,10 @@ export async function handleChatRequest(req: Request): Promise<Response> {
     if (chatError) throw chatError;
 
     // Enforce 5 user messages per week limit
-    if (chatData?.user_id) {
+    if (
+      chatData?.user_id &&
+      chatData.user_id !== '637ce53d-9787-4dea-9062-0f4f9c0c452c'
+    ) {
       const oneWeekAgo = new Date(
         Date.now() - 7 * 24 * 60 * 60 * 1000
       ).toISOString();

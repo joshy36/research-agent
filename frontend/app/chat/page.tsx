@@ -12,7 +12,7 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const SUGGESTED_QUERIES = [
   'What are the effects of magnesium on sleep?',
@@ -26,10 +26,80 @@ export default function Research() {
   const [showExplainer, setShowExplainer] = useState(false);
   const router = useRouter();
   const { user, showLoginDialog } = useAuth();
+  const [messageLimit, setMessageLimit] = useState({
+    count: 0,
+    limit: 5, // Default limit, will be updated from API
+    resetDate: null as null | string,
+  });
+  const [loadingLimit, setLoadingLimit] = useState(false);
+
+  const isLimitReached = !!user && messageLimit.count >= messageLimit.limit;
+
+  const fetchMessageLimit = async () => {
+    if (!user) {
+      setLoadingLimit(false);
+      // Reset to defaults if no user
+      setMessageLimit({ count: 0, limit: 5, resetDate: null });
+      return;
+    }
+    setLoadingLimit(true);
+    setError(null); // Clear previous errors
+    try {
+      const url =
+        process.env.NEXT_PUBLIC_API_URL +
+        `/api/message-limit-status?userId=${user.id}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setMessageLimit({
+          count: data.count,
+          limit: data.limit,
+          resetDate: data.resetDate, // Store as string from API
+        });
+      } else {
+        const errorText = await res.text();
+        console.error('Failed to fetch message limit status:', errorText);
+        setError(
+          'Could not retrieve usage limit. Querying is temporarily disabled.',
+        );
+        setMessageLimit((prev) => ({ ...prev, count: prev.limit })); // Assume limit reached
+      }
+    } catch (e) {
+      console.error('Network error fetching message limit:', e);
+      setError(
+        'Network error. Querying is temporarily disabled while checking usage limits.',
+      );
+      setMessageLimit((prev) => ({ ...prev, count: prev.limit })); // Assume limit reached
+    } finally {
+      setLoadingLimit(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchMessageLimit();
+    } else {
+      // Reset limit state and clear error if user logs out or is not present initially
+      setMessageLimit({ count: 0, limit: 5, resetDate: null });
+      setLoadingLimit(false);
+      setError(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   async function handleSubmit(formData: FormData) {
     if (!user) {
       showLoginDialog();
+      return;
+    }
+
+    if (isLimitReached) {
+      setError(
+        `You've reached your query limit of ${messageLimit.limit}.` +
+          (messageLimit.resetDate
+            ? ` It resets on ${new Date(messageLimit.resetDate).toLocaleString()}.`
+            : ''),
+      );
       return;
     }
 
@@ -59,6 +129,16 @@ export default function Research() {
   async function handleSuggestedQuery(query: string) {
     if (!user) {
       showLoginDialog();
+      return;
+    }
+
+    if (isLimitReached) {
+      setError(
+        `You've reached your query limit of ${messageLimit.limit}.` +
+          (messageLimit.resetDate
+            ? ` It resets on ${new Date(messageLimit.resetDate).toLocaleString()}.`
+            : ''),
+      );
       return;
     }
 
@@ -121,15 +201,44 @@ export default function Research() {
                   onClick={() => !user && showLoginDialog()}
                   placeholder="What would you like to research?"
                   className="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 p-4 pr-12 text-white placeholder:text-zinc-500 focus:border-zinc-600 focus:outline-none"
+                  disabled={(!!user && loadingLimit) || isLimitReached}
                 />
                 <button
                   type="submit"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-white p-2 text-black hover:bg-zinc-100 cursor-pointer"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-white p-2 text-black hover:bg-zinc-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={
+                    !input.trim() || (!!user && loadingLimit) || isLimitReached
+                  }
                 >
                   <Search className="h-5 w-5" />
                 </button>
               </div>
               {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+              {user &&
+                !error && ( // Only show limit info if logged in and no other critical error
+                  <div className="mt-2 text-sm text-zinc-400 text-center">
+                    {loadingLimit ? (
+                      'Loading usage limit...'
+                    ) : isLimitReached ? (
+                      <>
+                        Weekly query limit reached.
+                        {messageLimit.resetDate &&
+                          ` Resets: ${new Date(
+                            messageLimit.resetDate,
+                          ).toLocaleString()}`}
+                      </>
+                    ) : (
+                      <>
+                        Queries used: {messageLimit.count} /{' '}
+                        {messageLimit.limit}
+                        {messageLimit.resetDate &&
+                          ` (Resets: ${new Date(
+                            messageLimit.resetDate,
+                          ).toLocaleString()})`}
+                      </>
+                    )}
+                  </div>
+                )}
             </form>
 
             {showExplainer && (
@@ -171,6 +280,7 @@ export default function Research() {
                     type="button"
                     onClick={() => handleSuggestedQuery(query)}
                     className="w-full flex items-center justify-between px-3 sm:px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-700/50 active:bg-zinc-700/70 hover:cursor-pointer transition-colors rounded-lg group"
+                    disabled={(!!user && loadingLimit) || isLimitReached}
                   >
                     <span className="text-left line-clamp-2">{query}</span>
                     <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 text-zinc-500 group-hover:text-zinc-300 transition-all flex-shrink-0 ml-2" />

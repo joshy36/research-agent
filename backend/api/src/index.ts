@@ -6,7 +6,7 @@ import { generateObject } from 'ai';
 import { openrouter } from '../../libs/openrouter.js';
 import { z } from 'zod';
 import { handleChatRequest } from './chat.js';
-import { getUserMessageLimitStatus } from './messageLimitStatus.js';
+import { getUserMessageLimitStatus } from './utils/messageLimitStatus.js';
 import { toNodeStream } from './utils/stream.js';
 
 const app = express();

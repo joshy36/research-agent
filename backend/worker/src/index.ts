@@ -16,6 +16,7 @@ import {
 import { chunkAndEmbedPaper } from './utils/generateEmbedding.js';
 import { toMeshHeading } from './utils/toMeshHeading.js';
 import { openrouter } from '../../libs/openrouter.js';
+import { removeJob } from './utils/removeJob.js';
 
 async function processTask(task: {
   id: number;
@@ -30,7 +31,7 @@ async function processTask(task: {
     switch (context.state) {
       case 'parseQuery': {
         const { object } = await generateObject({
-          model: openrouter.chat('gpt-4o-mini'),
+          model: openrouter.chat('gpt-4o'),
           schema: z.object({
             parsedQuery: z.object({
               rawTerms: z.array(z.string()),
@@ -79,6 +80,12 @@ async function processTask(task: {
           parsedQuery: object.parsedQuery,
           state: 'fetchMetadata',
         });
+
+        await supabase
+          .from('queue')
+          .delete()
+          .eq('task_id', context.taskId)
+          .eq('state', 'parseQuery');
         break;
       }
       case 'fetchMetadata': {
@@ -104,6 +111,11 @@ async function processTask(task: {
             state: 'processPaper',
           });
         }
+        await supabase
+          .from('queue')
+          .delete()
+          .eq('task_id', context.taskId)
+          .eq('state', 'fetchMetadata');
         break;
       }
       case 'processPaper': {
@@ -145,6 +157,9 @@ async function processTask(task: {
                   }),
                 })
                 .eq('task_id', context.taskId);
+
+              await removeJob(context);
+
               return; // Skip this article and continue with others
             }
             const paperJson = await response.json();
@@ -169,6 +184,8 @@ async function processTask(task: {
               );
               throw decrementError;
             }
+
+            await removeJob(context);
 
             console.log(`New total articles count: ${newCount}`);
             return; // Skip this article and continue with others
