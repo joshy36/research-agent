@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { handleChatRequest } from './chat.js';
 import { getUserMessageLimitStatus } from './utils/messageLimitStatus.js';
 import { toNodeStream } from './utils/stream.js';
+import { triggerInitialChatMessage } from '../../libs/triggerInitialChatMessage.js';
 
 const app = express();
 const PORT = 3001;
@@ -159,6 +160,71 @@ app.post('/queue/purge', async (_req: Request, res: Response) => {
     console.error('Queue purge error:', error);
     res.status(500).json({
       error: 'Failed to purge queue',
+      details: (error as Error).message,
+    });
+  }
+});
+
+app.post('/complete-task', async (req: Request, res: Response) => {
+  try {
+    const { taskId } = req.body;
+
+    if (!taskId) {
+      res.status(400).json({
+        error: 'Missing required field',
+        details: 'Task ID is required',
+      });
+      return;
+    }
+
+    // Get the task data
+    const { data: taskData, error: taskError } = await supabase
+      .from('tasks')
+      .select('processed_articles')
+      .eq('task_id', taskId)
+      .single();
+
+    if (taskError) throw taskError;
+
+    // First update task state to generatingResponse
+    const { error: updateError } = await supabase
+      .from('tasks')
+      .update({
+        state: 'generatingResponse',
+        processed_articles: taskData.processed_articles,
+      })
+      .eq('task_id', taskId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    // Remove from queue
+    const { error: deleteError } = await supabase
+      .from('queue')
+      .delete()
+      .eq('task_id', taskId);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    // Trigger initial chat message
+    try {
+      await triggerInitialChatMessage(taskId);
+    } catch (error) {
+      console.error('Error triggering initial chat message:', error);
+      // Don't throw here, as the task is already marked as generatingResponse
+    }
+
+    res.status(200).json({
+      status: 'Task completed successfully',
+      taskId,
+    });
+  } catch (error) {
+    console.error('Complete task error:', error);
+    res.status(500).json({
+      error: 'Failed to complete task',
       details: (error as Error).message,
     });
   }

@@ -7,33 +7,6 @@ import { Request } from 'express';
 import { SYSTEM_PROMPT } from './utils/systemPrompt.js';
 import { completeTask } from '../../libs/queue.js';
 
-async function completeTaskAndUpdateState(taskId: string) {
-  console.log('Updating task state to Complete:', { task_id: taskId });
-
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  const { error: updateError } = await supabase
-    .from('tasks')
-    .update({ state: 'Complete' })
-    .eq('task_id', taskId);
-
-  if (updateError) {
-    console.error('Error updating task state to Complete:', updateError);
-    return false;
-  }
-
-  console.log('Successfully marked task as Complete:', { task_id: taskId });
-
-  try {
-    await completeTask(taskId);
-    console.log('Successfully completed task in queue:', taskId);
-    return true;
-  } catch (error) {
-    console.error('Error completing task in queue:', error);
-    return false;
-  }
-}
-
 export async function handleChatRequest(req: Request): Promise<Response> {
   try {
     const { chatId, messages, model = 'openai/o3-mini' } = req.body;

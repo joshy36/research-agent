@@ -17,6 +17,7 @@ import { chunkAndEmbedPaper } from './utils/generateEmbedding.js';
 import { toMeshHeading } from './utils/toMeshHeading.js';
 import { openrouter } from '../../libs/openrouter.js';
 import { removeJob } from './utils/removeJob.js';
+import { triggerInitialChatMessage } from '../../libs/triggerInitialChatMessage.js';
 
 async function processTask(task: {
   id: number;
@@ -328,17 +329,11 @@ async function startCompletionChecker() {
             });
 
             try {
-              console.log(
-                `Attempting to complete/delete jobs for task ${task.task_id} in the queue as all articles are processed...`
-              );
-              const { error: deleteError } = await supabase
-                .from('queue')
-                .delete()
-                .eq('task_id', task.task_id);
+              await supabase.from('queue').delete().eq('task_id', task.task_id);
               console.log(
                 `Successfully completed/deleted jobs for task ${task.task_id} in the queue.`
               );
-              // Update task state to generatingResponse
+
               const { error: updateError } = await supabase
                 .from('tasks')
                 .update({
@@ -358,45 +353,12 @@ async function startCompletionChecker() {
                 final_processed_articles: task.processed_articles,
               });
 
-              // Get the chat ID for this task
-              const { data: chatData, error: chatError } = await supabase
-                .from('chats')
-                .select('id')
-                .eq('task_id', task.task_id)
-                .single();
-
-              if (chatError) {
-                console.error('Error fetching chat data:', chatError);
-                continue;
-              }
-
-              // Trigger initial chat message
               try {
                 console.log(
                   'Triggering initial chat message for task:',
                   task.task_id
                 );
-                const response = await fetch('http://localhost:3001/api/chat', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    chatId: chatData.id,
-                    messages: [
-                      {
-                        role: 'user',
-                        parts: [{ type: 'text', text: task.message }],
-                      },
-                    ],
-                    model: 'gpt-o3-mini',
-                  }),
-                });
-
-                if (!response.ok) {
-                  throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                console.log('Successfully triggered initial chat message');
+                await triggerInitialChatMessage(task.task_id);
               } catch (error) {
                 console.error('Error triggering initial chat message:', error);
               }

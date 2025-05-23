@@ -789,7 +789,6 @@ export default function ClientChatPage({
                       ))}
                       {typeof task?.processed_articles === 'number' &&
                       typeof task?.total_articles === 'number' &&
-                      task.processed_articles === task.total_articles &&
                       task.total_articles > 0 &&
                       task.state === 'Complete' ? (
                         <div className="mt-4 p-4 bg-gradient-to-r from-green-900/40 to-black-900/20 border border-green-900/50 rounded-lg">
@@ -812,14 +811,60 @@ export default function ClientChatPage({
                             <ChevronRight className="w-4 h-4" />
                           </button>
                         </div>
-                      ) : (
-                        <div className="mt-4 flex items-center gap-2 text-sm text-gray-400 bg-zinc-800/30 p-3 rounded-lg border border-zinc-700/50">
-                          <p>
-                            If the research progress is still loading after 30
-                            seconds, try refreshing the page.
-                          </p>
+                      ) : task?.state === 'processPaper' ? (
+                        <div className="mt-4 flex flex-col gap-3 text-sm text-gray-400 bg-zinc-800/30 p-4 rounded-lg border border-zinc-700/50">
+                          <div className="flex flex-col gap-2">
+                            <h3 className="font-medium text-gray-200">
+                              Manual Completion
+                            </h3>
+                            <p className="text-gray-400">
+                              If the research is taking too long, you can
+                              manually complete it. This will:
+                            </p>
+                            <ul className="list-disc list-inside space-y-1 text-gray-400">
+                              <li>Skip any remaining article processing</li>
+                              <li>
+                                Generate an initial response based on the
+                                articles processed so far
+                              </li>
+                              <li>Allow you to start chatting immediately</li>
+                            </ul>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              try {
+                                const response = await fetch(
+                                  `${process.env.NEXT_PUBLIC_API_URL}/complete-task`,
+                                  {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                      taskId: task?.task_id,
+                                    }),
+                                  },
+                                );
+
+                                if (!response.ok) {
+                                  throw new Error('Failed to complete task');
+                                }
+
+                                toast.success(
+                                  'Research completed successfully',
+                                );
+                              } catch (error) {
+                                console.error('Error completing task:', error);
+                                toast.error('Failed to complete research');
+                              }
+                            }}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors cursor-pointer w-fit"
+                          >
+                            <span>Complete Research</span>
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </div>
